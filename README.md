@@ -57,6 +57,9 @@ Tarvittaessa muuta tiedostosta ainakin:
 - `DB_PORT`
 - `WORDPRESS_DB_PASSWORD`
 - `MYSQL_ROOT_PASSWORD`
+- `WORDPRESS_ADMIN_USER` — WordPress-pääkäyttäjän tunnus
+- `WORDPRESS_ADMIN_PASSWORD` — WordPress-pääkäyttäjän salasana
+- `WORDPRESS_ADMIN_EMAIL` — WordPress-pääkäyttäjän sähköposti
 
 ### 3. Luo Dockerin datakansiot
 
@@ -86,31 +89,27 @@ Tarkista konttien tila:
 docker compose ps
 ```
 
-### 5. Asenna WordPress selaimessa
+### 5. WordPress- ja WooCommerce-asennus (automatisoitu)
 
-Avaa selaimessa:
+`webshop-cli`-kontti käynnistyy automaattisesti stackin mukana ja:
 
-- `http://localhost:18080`
+1. odottaa, että WordPress-tiedostot ja tietokanta ovat valmiita
+2. asentaa WordPress-coren `.env`-tiedostossa määritellyillä tunnuksilla (jos ei ole jo asennettu)
+3. lataa ja aktivoi WooCommerce-pluginin (jos ei ole jo asennettu)
 
-Tee normaali WordPressin ensiasennus:
+Seuraa asennuksen etenemistä:
 
-1. valitse kieli
-2. anna sivuston nimi
-3. luo admin-kayttaja nimella `admin`
-4. aseta salasanaksi `X*%2Iwz*gXaC%%Bkps`
-5. kirjaudu sisaan
+```bash
+docker compose logs -f webshop-cli
+```
 
-Jos ymparisto kaynnistetaan tyhjalla tietokannalla, WordPress-admin luodaan taman wizardin yhteydessa. Tata ei ole tassa vaiheessa automatisoitu tietokanta-importilla, joten ensiasennus tehdaan kasin selaimessa.
+Kun loki näyttää `Setup complete`, WordPress on käytettävissä osoitteessa `http://localhost:18080` valmiiksi asennettuna WooCommercella.
 
-### 6. Asenna WooCommerce
+Kirjaudu WordPress-hallintapaneeliin `.env`-tiedostossa määritellyillä tunnuksilla (`WORDPRESS_ADMIN_USER` / `WORDPRESS_ADMIN_PASSWORD`).
 
-WordPressin hallintapaneelissa:
+### 6. Divi-teema
 
-1. mene kohtaan `Plugins`
-2. asenna `WooCommerce`
-3. aktivoi plugin
-
-Divi ei tule tasta reposta, joten se asennetaan erikseen lisenssin haltijan toimesta.
+Divi ei tule tästä reposta, joten se asennetaan erikseen lisenssin haltijan toimesta WordPressin hallintapaneelin kautta (`Appearance → Themes → Add New`).
 
 ## Pluginien ja teeman versionhallinta
 
@@ -361,10 +360,10 @@ Tata tarvitaan vain jos muutat itse Docker-stackia. Tavalliseen teema- tai plugi
 
 Yksinkertainen ensitesti paikallisesti:
 
-1. kaynnista stack
-2. avaa `http://localhost:18080`
-3. asenna WordPress
-4. asenna ja aktivoi WooCommerce
+1. kaynnista stack komennolla `docker compose up -d`
+2. seuraa asennusta komennolla `docker compose logs -f webshop-cli`
+3. kun loki näyttää `Setup complete`, avaa `http://localhost:18080/wp-admin`
+4. kirjaudu sisaan `.env`-tiedostossa maaritellyin tunnuksin
 5. varmista, etta WordPressin hallintapaneeli ja WooCommerce-valikko avautuvat ilman virhetta
 6. varmista, etta `http://localhost:18081` avaa Adminerin
 
@@ -377,6 +376,12 @@ Jos `docker compose up -d` ei kaynnisty:
 - varmista, etta Docker Desktop on paalla
 - varmista, ettei portti `18080`, `18081` tai `13306` ole jo kaytossa
 - tarkista lokit komennolla `docker compose logs -f`
+
+Jos WooCommerce-asennus epaonnistuu:
+
+- tarkista `webshop-cli`-kontin lokit: `docker compose logs webshop-cli`
+- kaynnista cli-kontti uudelleen: `docker compose up webshop-cli`
+- varmista, etta `.env`-tiedostossa on kaikki tarvittavat muuttujat (ks. `.env.example`)
 
 Jos WordPress ei yhdista tietokantaan:
 
