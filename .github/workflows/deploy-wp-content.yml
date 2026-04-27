@@ -3,7 +3,7 @@ name: Deploy wp-content
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - "wordpress/wp-content/**"
       - ".github/workflows/deploy-wp-content.yml"
