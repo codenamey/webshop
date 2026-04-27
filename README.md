@@ -2,6 +2,34 @@
 
 WordPress + WooCommerce -projekti custom painatuksilla varustetuille tuotteille.
 
+## Tyoentelytapa
+
+Tassa repossa ei kuulu tyoskennella suoraan `master`-haaraan.
+
+Kaytanto:
+
+1. valitse aina ensin GitHub issue, jonka mukaan teet muutoksen
+2. luo issueta varten oma branch
+3. tee muutokset branchiin
+4. avaa pull request `master`-haaraan
+5. lisaa oletuksena `codenamey` revieweriksi
+6. merge vasta kun pull request on hyvaksytty
+
+Tavoite on, etta jokainen muutos liittyy johonkin taskiin ja kaikki `master`-haaran muutokset kulkevat tarkastuksen kautta.
+
+Suositeltu branchin nimeaminen:
+
+- `feature/issue-<numero>-lyhyt-kuvaus`
+- `fix/issue-<numero>-lyhyt-kuvaus`
+
+Esimerkki:
+
+```text
+feature/issue-7-homepage-layout
+```
+
+Pull requestiin kannattaa aina linkittaa issue.
+
 ## Windows-kehitysymparisto
 
 Suositeltu tapa ajaa projekti Windowsissa:
