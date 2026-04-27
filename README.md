@@ -2,6 +2,34 @@
 
 WordPress + WooCommerce -projekti custom painatuksilla varustetuille tuotteille.
 
+## Tyoentelytapa
+
+Tassa repossa ei kuulu tyoskennella suoraan `master`-haaraan.
+
+Kaytanto:
+
+1. valitse aina ensin GitHub issue, jonka mukaan teet muutoksen
+2. luo issueta varten oma branch
+3. tee muutokset branchiin
+4. avaa pull request `master`-haaraan
+5. lisaa oletuksena `codenamey` revieweriksi
+6. merge vasta kun pull request on hyvaksytty
+
+Tavoite on, etta jokainen muutos liittyy johonkin taskiin ja kaikki `master`-haaran muutokset kulkevat tarkastuksen kautta.
+
+Suositeltu branchin nimeaminen:
+
+- `feature/issue-<numero>-lyhyt-kuvaus`
+- `fix/issue-<numero>-lyhyt-kuvaus`
+
+Esimerkki:
+
+```text
+feature/issue-7-homepage-layout
+```
+
+Pull requestiin kannattaa aina linkittaa issue.
+
 ## Windows-kehitysymparisto
 
 Suositeltu tapa ajaa projekti Windowsissa:
@@ -286,6 +314,99 @@ Jos haluatte myohemmin automatisoida taman, seuraava askel on erottaa:
 - `migraatio` tuotannolle
 
 Niita ei kannata sotkea yhdeksi samaksi dumpiksi.
+
+## Divi-tyoskentelymalli
+
+Divin kanssa kaikki muutokset eivat ole samanlaisia.
+
+On erotettava kaksi eri asiaa:
+
+1. tiedostopohjaiset muutokset
+2. tietokantapohjaiset muutokset
+
+### Tiedostopohjaiset muutokset
+
+Nama kuuluvat Git-versionhallintaan ja nykyiseen deploy-putkeen:
+
+- child theme
+- omat pluginne
+- PHP-muokkaukset
+- CSS- ja JS-muokkaukset
+- WooCommerce override -tiedostot
+
+Nama muutokset:
+
+- tehdään omassa branchissa
+- reviewataan PR:ssä
+- mergeään `master`-haaraan
+- deployataan GitHub Actionsilla palvelimelle
+
+### Tietokantapohjaiset muutokset
+
+Nama eivat tule tuotantoon pelkalla Git-pushilla:
+
+- Divi Builder -sivut
+- Divi Theme Builder -layoutit
+- Divi Library -sisalto
+- WordPress-sivut ja postaukset
+- pluginien asetukset, jotka tallentuvat tietokantaan
+
+Tarkeä seuraus:
+
+- jos lokaalissa ja tuotannossa on eri tietokanta, Divilla tehdyt muutokset eivat siirry tuotantoon automaattisesti
+
+### Suositeltu tapa tehda Divi-muutoksia
+
+Suositus on tama:
+
+1. kaikki mahdollinen logiikka tehdään tiedostoihin
+2. Divilla tehtävät sisältömuutokset tehdään staging- tai dev-ympäristössä, ei suoraan lokaalista tuotantoon
+3. tuotantoon viedään vain harkitut sisältömuutokset
+
+Kaytännön jako:
+
+- Git + Actions = koodi, teemat, pluginit ja muut tiedostot
+- Divi / WordPress Admin = sisältö, layoutit ja muut tietokantamuutokset
+
+### Miten Divi-muutokset viedään eteenpäin
+
+Suositeltu malli:
+
+1. tee tekniset muutokset Gitillä
+2. tee Divi-sisältömuutokset staging-ympäristössä
+3. testaa siellä että layout toimii
+4. vie vasta sitten tuotantoon hallitusti
+
+Mahdolliset vientitavat:
+
+- Divi Library export/import
+- Divi Theme Builder export/import
+- valikoitu WordPress migration -työkalu
+- käsin tehdyt muutokset WordPressin hallintapaneelissa
+
+### Mita ei pidä tehdä
+
+Näitä ei pidä tehdä normaalina oletusprosessina:
+
+- koko lokaalin tietokannan ajaminen suoraan tuotantoon
+- tuotannon tietokannan ylikirjoittaminen kehittäjän dumpilla
+- oletus siitä, että Divi-muutos tulee tuotantoon automaattisesti GitHub Actionsin mukana
+
+### Kehittäjien yhteinen sääntö
+
+Kun työ liittyy Diviin, mieti aina ensin:
+
+- onko tämä tiedostomuutos vai tietokantamuutos
+
+Jos se on tiedostomuutos:
+
+- tee se Gitin kautta
+
+Jos se on tietokantamuutos:
+
+- tee se stagingin kautta tai vie erikseen hallitulla tavalla
+
+Tämä sääntö estää sen, että lokaalissa tehty Divi-työ jää vain yhden kehittäjän kantaan eikä koskaan päädy oikeasti jaettavaan ympäristöön.
 
 ## Mista kehitystiedostot loytyvat
 
