@@ -38,6 +38,31 @@ services:
     networks:
       - webshop
 
+  webshop-cli:
+    image: wordpress:cli-php8.2
+    container_name: webshop-cli
+    depends_on:
+      - webshop-db
+      - webshop-web
+    environment:
+      WORDPRESS_DB_HOST: webshop-db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_PORT: ${WORDPRESS_PORT}
+      WORDPRESS_TITLE: ${WORDPRESS_TITLE:-Webshop}
+      WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER:-admin}
+      WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD:-change-me-local}
+      WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL:-admin@example.com}
+    volumes:
+      - ./docker-data/html:/var/www/html
+      - ./wordpress/wp-content:/var/www/html/wp-content
+      - ./scripts/wpcli-setup.sh:/usr/local/bin/wpcli-setup.sh:ro
+    networks:
+      - webshop
+    command: wpcli-setup.sh
+    restart: "no"
+
   webshop-adminer:
     image: adminer:latest
     container_name: webshop-adminer
