@@ -1,0 +1,25 @@
+.DS_Store
+.env
+.env.local
+.idea/
+.vscode/
+.codex/
+.agent/
+.agents/
+
+# Docker
+docker-data/
+docker-volumes/
+*.log
+
+# WordPress runtime content
+wordpress/.htaccess
+wordpress/wp-content/cache/
+wordpress/wp-content/upgrade/
+wordpress/wp-content/uploads/
+wordpress/wp-content/backups/
+wordpress/wp-content/ai1wm-backups/
+
+# OS / editor temp files
+*.swp
+*.swo

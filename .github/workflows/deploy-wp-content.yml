@@ -1,0 +1,52 @@
+name: Deploy wp-content
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "wordpress/wp-content/**"
+      - ".github/workflows/deploy-wp-content.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.WEBSHOP_DEPLOY_KEY }}
+
+      - name: Trust server host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 135.181.22.113 >> ~/.ssh/known_hosts
+
+      - name: Ensure target directories exist
+        run: |
+          ssh root@135.181.22.113 "
+            mkdir -p /srv/webshop/app/wp-content/themes
+            mkdir -p /srv/webshop/app/wp-content/plugins
+            chown -R root:dev /srv/webshop/app
+            chmod -R g+rwX /srv/webshop/app
+            find /srv/webshop/app -type d -exec chmod g+s {} \;
+          "
+
+      - name: Sync wp-content
+        run: |
+          rsync -az --delete \
+            --exclude 'uploads/' \
+            wordpress/wp-content/ \
+            root@135.181.22.113:/srv/webshop/app/wp-content/
+
+      - name: Fix group permissions
+        run: |
+          ssh root@135.181.22.113 "
+            chown -R root:dev /srv/webshop/app/wp-content
+            chmod -R g+rwX /srv/webshop/app/wp-content
+            find /srv/webshop/app/wp-content -type d -exec chmod g+s {} \;
+          "

@@ -1,0 +1,48 @@
+name: Task
+description: Luo toteutettava työtehtävä projektiin
+title: "[Task]: "
+labels:
+  - task
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Tiivistelmä
+      description: Kuvaa mitä pitää tehdä ja miksi.
+      placeholder: Esim. Luo docker-compose-pohjainen WordPress-kehitysympäristö WooCommercella.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Rajaus
+      description: Mitä tähän kuuluu ja mitä ei kuulu.
+      placeholder: |
+        Kuuluu:
+        - ...
+
+        Ei kuulu:
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Hyväksymiskriteerit
+      description: Listaa ehdot, joiden pitää täyttyä ennen sulkemista.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Riippuvuudet
+      description: Mitkä issuet tai päätökset voivat blokata tämän.
+      placeholder: Esim. Riippuu issueista #1 ja #2
+  - type: textarea
+    id: notes
+    attributes:
+      label: Lisähuomiot
+      description: Linkit, tekniset päätökset, design-huomiot tai avoimet kysymykset.

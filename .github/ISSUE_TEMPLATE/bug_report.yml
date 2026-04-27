@@ -1,0 +1,35 @@
+name: Bug Report
+description: Raportoi virhe tai regressio
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Ongelman kuvaus
+      description: Mitä tapahtuu ja mitä pitäisi tapahtua.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Toistovaiheet
+      description: Anna täsmälliset vaiheet virheen toistamiseen.
+      placeholder: |
+        1. Mene sivulle ...
+        2. Valitse ...
+        3. Näe virhe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ympäristö
+      description: Selain, laite, branch, Docker/WordPress-versiot tms.
+      placeholder: Esim. local Docker, WordPress 6.x, WooCommerce x.y, Chrome latest
+  - type: textarea
+    id: logs
+    attributes:
+      label: Lokit ja lisämateriaali
+      description: Virheilmoitukset, screenshotit, stacktrace tai muut havainnot.
