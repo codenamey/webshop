@@ -29,9 +29,12 @@ add_action( 'plugins_loaded', function () {
 		return;
 	}
 
-	$plugin_class = PRINTENGINE_WC_ADDON_PATH . 'src/Plugin.php';
-	if ( file_exists( $plugin_class ) ) {
-		require_once $plugin_class;
+	$plugin_class  = PRINTENGINE_WC_ADDON_PATH . 'src/Plugin.php';
+	$resolved_path = realpath( $plugin_class );
+	$base_path     = realpath( PRINTENGINE_WC_ADDON_PATH );
+
+	if ( $resolved_path && $base_path && str_starts_with( $resolved_path, $base_path ) ) {
+		require_once $resolved_path;
 	}
 
 	if ( class_exists( '\PrintEngine\Plugin' ) ) {
@@ -40,9 +43,15 @@ add_action( 'plugins_loaded', function () {
 } );
 
 register_activation_hook( __FILE__, function () {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
 	// Future activation logic here.
 } );
 
 register_deactivation_hook( __FILE__, function () {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
 	// Future deactivation logic here.
 } );

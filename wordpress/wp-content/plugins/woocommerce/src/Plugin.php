@@ -67,6 +67,12 @@ final class Plugin {
 	 * Add new feature modules here as the plugin grows.
 	 */
 	private function bootstrap(): void {
-		// Future: load text domain, register hooks, instantiate sub-modules.
+		load_plugin_textdomain(
+			'printengine-woocommerce-addon',
+			false,
+			dirname( plugin_basename( PRINTENGINE_WC_ADDON_FILE ) ) . '/languages'
+		);
+
+		// Future: register hooks, instantiate sub-modules.
 	}
 }
