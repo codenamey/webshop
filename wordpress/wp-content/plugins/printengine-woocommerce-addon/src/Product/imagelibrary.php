@@ -44,7 +44,7 @@ class ImageLibrary {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'PrintEngine — kuvakirjasto', 'printengine-woocommerce-addon' ); ?></h1>
-			<p><?php esc_html_e( 'Lisää kuvat, joista asiakkaat voivat valita tuotesivulla.', 'printengine-woocommerce-addon' ); ?></p>
+			<p><?php esc_html_e( 'Add images that customers can choose from on the product page.', 'printengine-woocommerce-addon' ); ?></p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="printengine_save_library" />
@@ -63,10 +63,10 @@ class ImageLibrary {
 				</div>
 
 				<button type="button" id="printengine-add-image" class="button">
-					<?php esc_html_e( 'Lisää kuva', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'Add image', 'printengine-woocommerce-addon' ); ?>
 				</button>
 
-				<?php submit_button( __( 'Tallenna kirjasto', 'printengine-woocommerce-addon' ) ); ?>
+				<?php submit_button( __( 'Save library', 'printengine-woocommerce-addon' ) ); ?>
 			</form>
 		</div>
 
@@ -75,7 +75,7 @@ class ImageLibrary {
 			var frame;
 			$('#printengine-add-image').on('click', function() {
 				if (frame) { frame.open(); return; }
-				frame = wp.media({ title: 'Valitse kuva', multiple: true, library: { type: 'image' } });
+				frame = wp.media({ title: 'Choose image', multiple: true, library: { type: 'image' } });
 				frame.on('select', function() {
 					frame.state().get('selection').each(function(attachment) {
 						var a     = attachment.toJSON();
@@ -126,7 +126,7 @@ class ImageLibrary {
 
 	public static function handle_save(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'Ei oikeuksia.', 'printengine-woocommerce-addon' ) );
+			wp_die( esc_html__( 'No permission.', 'printengine-woocommerce-addon' ) );
 		}
 
 		check_admin_referer( 'printengine_save_library', 'printengine_nonce' );

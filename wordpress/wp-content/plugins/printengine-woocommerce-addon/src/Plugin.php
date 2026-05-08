@@ -73,10 +73,12 @@ final class Plugin {
 			dirname( plugin_basename( PRINTENGINE_WC_ADDON_FILE ) ) . '/languages'
 		);
 
-		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/imagelibrary.php';
-		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/customizer.php';
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/ImageLibrary.php';
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/CustomizerField.php';
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/blockCartIntegration.php';
 
 		\PrintEngine\Product\ImageLibrary::register();
 		\PrintEngine\Product\CustomizerField::register();
+		\PrintEngine\Product\BlockCartIntegration::register();
 	}
 }
