@@ -37,6 +37,37 @@ class CustomizerField {
 
 		// Show in customer order confirmation / account.
 		add_filter( 'woocommerce_order_item_display_meta_value', [ self::class, 'display_meta_value' ], 10, 3 );
+
+		// Stay on product page after add to cart — show notice instead of redirecting.
+		add_filter( 'woocommerce_add_to_cart_redirect', [ self::class, 'stay_on_product_page' ], 10, 2 );
+		add_filter( 'wc_add_to_cart_message_html',      [ self::class, 'add_to_cart_message' ], 10, 2 );
+	}
+
+	/**
+	 * Redirect back to the product page instead of the cart after adding to cart.
+	 */
+	public static function stay_on_product_page( string $url, ?\WC_Product $product ): string {
+		if ( ! $product ) {
+			return $url;
+		}
+		if ( is_product() || isset( $_POST['add-to-cart'] ) ) {
+			return get_permalink( $product->get_id() );
+		}
+		return $url;
+	}
+
+	/**
+	 * Customise the "added to cart" notice to include a cart link.
+	 */
+	public static function add_to_cart_message( string $message, array $products ): string {
+		$cart_url = wc_get_cart_url();
+		$message  = sprintf(
+			'%s <a href="%s" class="button wc-forward">%s</a>',
+			__( '"Product" has been added to your cart.', 'printengine-woocommerce-addon' ),
+			esc_url( $cart_url ),
+			__( 'View cart', 'printengine-woocommerce-addon' )
+		);
+		return $message;
 	}
 
 	/**
@@ -82,11 +113,11 @@ class CustomizerField {
 				'maxTextLength' => self::TEXT_MAX_LENGTH,
 				'allowedTypes'  => [ 'image/jpeg', 'image/png', 'image/svg+xml' ],
 				'i18n' => [
-					'fileTooLarge'  => __( 'File is too large (max 10 Mt).', 'printengine-woocommerce-addon' ),
+					'fileTooLarge'  => __( 'File is too large (max 10 MB).', 'printengine-woocommerce-addon' ),
 					'invalidType'   => __( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ),
-					'textTooLong'   => __( 'Text is too long (max 20 characters).', 'printengine-woocommerce-addon' ),
-					'requiredText'  => __( 'Write custom text.', 'printengine-woocommerce-addon' ),
-					'requiredImage' => __( 'Choose or upload custom image.', 'printengine-woocommerce-addon' ),
+					'textTooLong'   => __( 'Text on liian pitkä.', 'printengine-woocommerce-addon' ),
+					'requiredText'  => __( 'Please enter imprint text.', 'printengine-woocommerce-addon' ),
+					'requiredImage' => __( 'Please select or upload an imprint image.', 'printengine-woocommerce-addon' ),
 				],
 			]
 		);
@@ -110,8 +141,8 @@ class CustomizerField {
 			'PrintEngineBlockData',
 			[
 				'i18n' => [
-					'printText'  => __( 'Custom text', 'printengine-woocommerce-addon' ),
-					'printImage' => __( 'Custom image', 'printengine-woocommerce-addon' ),
+					'printText'  => __( 'Imprint text', 'printengine-woocommerce-addon' ),
+					'printImage' => __( 'Imprint image', 'printengine-woocommerce-addon' ),
 				],
 			]
 		);
@@ -122,7 +153,7 @@ class CustomizerField {
 	// -----------------------------------------------------------------------
 
 	/** Maximum characters allowed in the print text field. */
-	const TEXT_MAX_LENGTH = 20;
+	const TEXT_MAX_LENGTH = 100;
 
 	public static function render_field(): void {
 		$library = ImageLibrary::get_library();
@@ -149,7 +180,7 @@ class CustomizerField {
 				<button type="button" role="tab" aria-selected="false"
 					class="printengine-tab"
 					data-tab="library">
-					<?php esc_html_e( 'Choose image from library', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'Choose from library', 'printengine-woocommerce-addon' ); ?>
 				</button>
 				<?php endif; ?>
 			</div>
@@ -160,7 +191,7 @@ class CustomizerField {
 					<?php
 					printf(
 						/* translators: %d = max character count */
-						esc_html__( 'Printed text (max %d characters)', 'printengine-woocommerce-addon' ),
+						esc_html__( 'Imprint text (max %d characters)', 'printengine-woocommerce-addon' ),
 						self::TEXT_MAX_LENGTH
 					);
 					?>
@@ -170,10 +201,10 @@ class CustomizerField {
 					name="printengine_print_text"
 					rows="3"
 					maxlength="<?php echo esc_attr( self::TEXT_MAX_LENGTH ); ?>"
-					placeholder="<?php esc_attr_e( 'Write your text here…', 'printengine-woocommerce-addon' ); ?>"></textarea>
+					placeholder="<?php esc_attr_e( 'Enter imprint text…', 'printengine-woocommerce-addon' ); ?>"></textarea>
 				<p class="printengine-char-count" id="printengine-text-count" aria-live="polite">
 					<span id="printengine-text-remaining"><?php echo esc_html( self::TEXT_MAX_LENGTH ); ?></span>
-					<?php esc_html_e( 'characters left', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'characters remaining', 'printengine-woocommerce-addon' ); ?>
 				</p>
 				<p class="printengine-error" id="printengine-text-error" hidden></p>
 			</div>
@@ -252,7 +283,7 @@ class CustomizerField {
 
 			if ( $text === '' ) {
 				wc_add_notice(
-					__( 'Write custom text before adding to cart.', 'printengine-woocommerce-addon' ),
+					__( 'Please enter imprint text before adding to cart.', 'printengine-woocommerce-addon' ),
 					'error'
 				);
 				return false;
@@ -262,7 +293,7 @@ class CustomizerField {
 				wc_add_notice(
 					sprintf(
 						/* translators: %d = max character count */
-						__( 'Custom text is too long (max %d characters).', 'printengine-woocommerce-addon' ),
+						__( 'Imprint text on liian pitkä (max %d characters).', 'printengine-woocommerce-addon' ),
 						self::TEXT_MAX_LENGTH
 					),
 					'error'
@@ -282,7 +313,7 @@ class CustomizerField {
 		if ( $source === 'upload' ) {
 			if ( empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
 				wc_add_notice(
-					__( 'Choose an image before adding to cart.', 'printengine-woocommerce-addon' ),
+					__( 'Please add an imprint image before adding to cart.', 'printengine-woocommerce-addon' ),
 					'error'
 				);
 				return false;
@@ -308,7 +339,7 @@ class CustomizerField {
 					|| preg_match( '/javascript\s*:/i', $svg )
 				) {
 					wc_add_notice(
-						__( 'SVG files must not contain inline scripts or event handlers.', 'printengine-woocommerce-addon' ),
+						__( 'SVG file contains prohibited content.', 'printengine-woocommerce-addon' ),
 						'error'
 					);
 					return false;
@@ -322,7 +353,7 @@ class CustomizerField {
 
 			if ( ! $attachment_id || ! in_array( $attachment_id, ImageLibrary::get_library(), true ) ) {
 				wc_add_notice(
-					__( 'Choose an image before adding to cart.', 'printengine-woocommerce-addon' ),
+					__( 'Please select an image from the library before adding to cart.', 'printengine-woocommerce-addon' ),
 					'error'
 				);
 				return false;
@@ -394,7 +425,7 @@ class CustomizerField {
 
 		if ( $mode === 'text' && ! empty( $cart_item['printengine_print_text'] ) ) {
 			$item_data[] = [
-				'key'   => __( 'Custom text', 'printengine-woocommerce-addon' ),
+				'key'   => __( 'Imprint text', 'printengine-woocommerce-addon' ),
 				'value' => esc_html( $cart_item['printengine_print_text'] ),
 			];
 		}
@@ -406,7 +437,7 @@ class CustomizerField {
 			);
 
 			$item_data[] = [
-				'key'   => __( 'Custom image', 'printengine-woocommerce-addon' ),
+				'key'   => __( 'Imprint image', 'printengine-woocommerce-addon' ),
 				'value' => $thumb ?: esc_url( $cart_item['printengine_image_url'] ),
 			];
 		}
@@ -430,7 +461,7 @@ class CustomizerField {
 		if ( $mode === 'text' && ! empty( $values['printengine_print_text'] ) ) {
 			$text = sanitize_textarea_field( $values['printengine_print_text'] );
 			$item->add_meta_data( '_printengine_print_text', $text, true );
-			$item->add_meta_data( __( 'Custom text', 'printengine-woocommerce-addon' ), $text, true );
+			$item->add_meta_data( __( 'Imprint text', 'printengine-woocommerce-addon' ), $text, true );
 			return;
 		}
 
@@ -441,7 +472,7 @@ class CustomizerField {
 
 			// Human-readable label for emails / confirmation page.
 			$item->add_meta_data(
-				__( 'Custom image', 'printengine-woocommerce-addon' ),
+				__( 'Imprint image', 'printengine-woocommerce-addon' ),
 				absint( $values['printengine_image_attachment_id'] ),
 				true
 			);
@@ -453,7 +484,7 @@ class CustomizerField {
 	 * and the My Account order view.
 	 */
 	public static function display_meta_value( $value, \WC_Meta_Data $meta, \WC_Order_Item $item ) {
-		if ( $meta->key !== __( 'Custom image', 'printengine-woocommerce-addon' ) ) {
+		if ( $meta->key !== __( 'Imprint image', 'printengine-woocommerce-addon' ) ) {
 			return $value;
 		}
 
@@ -476,7 +507,7 @@ class CustomizerField {
 				return;
 			}
 			echo '<div class="printengine-admin-image" style="margin-top:8px;">';
-			echo '<strong>' . esc_html__( 'Custom text', 'printengine-woocommerce-addon' ) . '</strong><br />';
+			echo '<strong>' . esc_html__( 'Imprint text', 'printengine-woocommerce-addon' ) . '</strong><br />';
 			echo '<span>' . esc_html( $text ) . '</span>';
 			echo '</div>';
 			return;
@@ -493,10 +524,10 @@ class CustomizerField {
 		$source = $item->get_meta( '_printengine_image_source' );
 		$label  = $source === 'library'
 			? __( 'from library', 'printengine-woocommerce-addon' )
-			: __( 'uploaded by customer', 'printengine-woocommerce-addon' );
+			: __( 'customer upload', 'printengine-woocommerce-addon' );
 
 		echo '<div class="printengine-admin-image" style="margin-top:8px;">';
-		echo '<strong>' . esc_html__( 'Custom image', 'printengine-woocommerce-addon' ) . '</strong>';
+		echo '<strong>' . esc_html__( 'Imprint image', 'printengine-woocommerce-addon' ) . '</strong>';
 		echo ' <em>(' . esc_html( $label ) . ')</em><br />';
 		echo '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">' . wp_kses_post( $img ) . '</a>';
 		echo '</div>';
