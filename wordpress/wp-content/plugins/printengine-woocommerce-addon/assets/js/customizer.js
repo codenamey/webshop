@@ -5,7 +5,7 @@
     var i18n    = data.i18n || {};
     var maxSize = data.maxFileSize || 10 * 1024 * 1024;
     var allowed = data.allowedTypes || ['image/jpeg', 'image/png', 'image/svg+xml'];
-    var maxText = data.maxTextLength || 100;
+    var maxText = data.maxTextLength || 20;
 
     // Ensure the add-to-cart form supports file uploads.
     $(function () {
