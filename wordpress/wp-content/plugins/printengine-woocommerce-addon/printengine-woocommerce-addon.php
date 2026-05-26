@@ -35,23 +35,38 @@ add_action( 'plugins_loaded', function () {
 
 	if ( $resolved_path && $base_path && str_starts_with( $resolved_path, $base_path ) ) {
 		require_once $resolved_path;
-	}
+	} 
+	// Added else statement to help diagnosing broken deployments 
+	// if bootstrap file cannot be loaded
+	else {
+ 		add_action( 'admin_notices', static function () {
+ 			echo '<div class="notice notice-error"><p>';
+ 			echo esc_html__( 'PrintEngine WooCommerce Addon failed to load its bootstrap file.', 'printengine-woocommerce-addon' );
+ 			echo '</p></div>';
+ 		} );
+ 		return;
 
 	if ( class_exists( '\PrintEngine\Plugin' ) ) {
 		\PrintEngine\Plugin::init();
 	}
-} );
+}} );
 
 register_activation_hook( __FILE__, function () {
-	if ( ! current_user_can( 'activate_plugins' ) ) {
-		return;
-	}
+	if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
+        deactivate_plugins( plugin_basename( __FILE__ ) );
+        wp_die( 'PrintEngine WooCommerce Addon requires PHP 8.0 or higher.' );
+    }
+
+	 add_option( 'printengine_wc_addon_version', PRINTENGINE_WC_ADDON_VERSION );
+	
+	if ( false === get_option( 'printengine_image_library' ) ) {
+        add_option( 'printengine_image_library', [] );
+    }
+
 	// Future activation logic here.
 } );
 
 register_deactivation_hook( __FILE__, function () {
-	if ( ! current_user_can( 'activate_plugins' ) ) {
-		return;
-	}
+	// wp_clear_scheduled_hook( 'printengine_cleanup_orphan_uploads' );
 	// Future deactivation logic here.
 } );
