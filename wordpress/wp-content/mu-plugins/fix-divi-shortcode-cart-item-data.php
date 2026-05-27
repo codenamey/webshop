@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'WEBSHOP_DIVI_SHORTCODE_PATTERN' ) ) {
-	define( 'WEBSHOP_DIVI_SHORTCODE_PATTERN', '/\[\/?et_pb_.*?\]/is' );
+	define( 'WEBSHOP_DIVI_SHORTCODE_PATTERN', '/\[\/?et_pb_[^]]*?\]/i' );
 }
 
 add_filter(
