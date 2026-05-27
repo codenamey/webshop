@@ -73,6 +73,12 @@ final class Plugin {
 			dirname( plugin_basename( PRINTENGINE_WC_ADDON_FILE ) ) . '/languages'
 		);
 
-		// Future: register hooks, instantiate sub-modules.
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/ImageLibrary.php';
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/CustomizerField.php';
+		require_once PRINTENGINE_WC_ADDON_PATH . 'src/Product/BlockCartIntegration.php';
+
+		\PrintEngine\Product\ImageLibrary::register();
+		\PrintEngine\Product\CustomizerField::register();
+		\PrintEngine\Product\BlockCartIntegration::register();
 	}
 }
