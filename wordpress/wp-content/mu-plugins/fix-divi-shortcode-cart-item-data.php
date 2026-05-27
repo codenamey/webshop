@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'WEBSHOP_DIVI_SHORTCODE_PATTERN' ) ) {
-	define( 'WEBSHOP_DIVI_SHORTCODE_PATTERN', '/\[\/?et_pb_[^\]]*\]/i' );
+	define( 'WEBSHOP_DIVI_SHORTCODE_PATTERN', '/\[\/?et_pb_.*?\]/is' );
 }
 
 add_filter(
@@ -28,7 +28,7 @@ add_filter(
 			}
 
 			$contains_divi_shortcode = false;
-			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
+			foreach ( array( 'value', 'display', 'key', 'name' ) as $field ) {
 				if ( isset( $item[ $field ] ) && is_string( $item[ $field ] ) && preg_match( WEBSHOP_DIVI_SHORTCODE_PATTERN, $item[ $field ] ) ) {
 					$contains_divi_shortcode = true;
 					break;
