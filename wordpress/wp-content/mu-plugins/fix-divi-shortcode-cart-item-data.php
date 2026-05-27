@@ -25,7 +25,7 @@ continue;
 
 $contains_divi_shortcode = false;
 foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
-if ( isset( $item[ $field ] ) && is_string( $item[ $field ] ) && preg_match( '/\[\/?et_pb_[^\]]*/i', $item[ $field ] ) ) {
+				if ( isset( $item[ $field ] ) && is_string( $item[ $field ] ) && preg_match( '/\[\/?et_pb_[^\]]*\]/i', $item[ $field ] ) ) {
 $contains_divi_shortcode = true;
 break;
 }
