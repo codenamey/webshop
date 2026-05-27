@@ -5,38 +5,39 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-exit;
+	exit;
 }
 
 add_filter(
-'woocommerce_get_item_data',
-static function ( $item_data ) {
-if ( ! is_array( $item_data ) ) {
-return $item_data;
-}
+	'woocommerce_get_item_data',
+	static function ( $item_data ) {
+		if ( ! is_array( $item_data ) ) {
+			return $item_data;
+		}
 
-$sanitized_item_data = array();
+		$sanitized_item_data = array();
+		$divi_shortcode_pattern = '/\[\/?et_pb_[^\]]*\]/i';
 
-foreach ( $item_data as $item ) {
-if ( ! is_array( $item ) ) {
-$sanitized_item_data[] = $item;
-continue;
-}
+		foreach ( $item_data as $item ) {
+			if ( ! is_array( $item ) ) {
+				$sanitized_item_data[] = $item;
+				continue;
+			}
 
-$contains_divi_shortcode = false;
-foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
-				if ( isset( $item[ $field ] ) && is_string( $item[ $field ] ) && preg_match( '/\[\/?et_pb_[^\]]*\]/i', $item[ $field ] ) ) {
-$contains_divi_shortcode = true;
-break;
-}
-}
+			$contains_divi_shortcode = false;
+			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
+				if ( isset( $item[ $field ] ) && is_string( $item[ $field ] ) && preg_match( $divi_shortcode_pattern, $item[ $field ] ) ) {
+					$contains_divi_shortcode = true;
+					break;
+				}
+			}
 
-if ( ! $contains_divi_shortcode ) {
-$sanitized_item_data[] = $item;
-}
-}
+			if ( ! $contains_divi_shortcode ) {
+				$sanitized_item_data[] = $item;
+			}
+		}
 
-return $sanitized_item_data;
-},
-20
+		return $sanitized_item_data;
+	},
+	20
 );
