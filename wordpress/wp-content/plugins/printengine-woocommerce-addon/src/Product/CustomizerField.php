@@ -19,7 +19,6 @@ class CustomizerField {
 		add_action( 'wp_enqueue_scripts',                    [ self::class, 'enqueue_block_cart_assets' ] );
 
 		// Disable AJAX add-to-cart so the full form (including file upload) is submitted normally.
-		add_filter( 'woocommerce_is_purchasable',            '__return_true' );
 		add_filter( 'woocommerce_product_supports',          [ self::class, 'disable_ajax_add_to_cart' ], 10, 3 );
 
 		// Validate before adding to cart.
@@ -100,7 +99,7 @@ class CustomizerField {
 		wp_enqueue_script(
 			'printengine-block-cart',
 			PRINTENGINE_WC_ADDON_URL . 'assets/js/block-cart.js',
-			[],
+			[ 'wc-blocks-checkout', 'wp-data' ],
 			PRINTENGINE_WC_ADDON_VERSION,
 			true
 		);
@@ -277,6 +276,15 @@ class CustomizerField {
 		$source = isset( $_POST['printengine_image_source'] )
 			? sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ) )
 			: '';
+
+		$allowed_sources = [ 'upload', 'library' ];
+ 		if ( ! in_array( $source, $allowed_sources, true ) ) {
+ 			wc_add_notice(
+ 				__( 'Choose an image source before adding to cart.', 'printengine-woocommerce-addon' ),
+ 				'error'
+ 			);
+ 			return false;
+ 		}
 
 		// Uploaded file — server-side type and SVG content check.
 		if ( $source === 'upload' ) {
