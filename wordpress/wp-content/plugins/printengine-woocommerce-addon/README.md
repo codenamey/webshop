@@ -34,7 +34,7 @@ Runs automatically when the plugin is activated:
 - Blocks activation if PHP < 8.0
 - Saves plugin version to `printengine_wc_addon_version` option
 - Initialises empty `printengine_image_library` option
-- Creates WooCommerce attributes `pa_size` (S/M/L/XL) and `pa_color` (Black/White/Navy) if they don't exist
+- Creates WooCommerce attributes `pa_size` (S/M/L/XL/XXL) and `pa_color` (Black/White/Gray) if they don't exist
 
 After activation, verify under **WooCommerce → Attributes** that both attributes appear.
 
@@ -60,7 +60,7 @@ After activation, verify under **WooCommerce → Attributes** that both attribut
 
 ## Product & SKU conventions
 
-Products with custom imprinting use **WooCommerce variable products** with two attributes: `pa_size` (S/M/L/XL) and `pa_color` (Black/White/Navy). One product listing per garment type — no separate product per size/colour combination.
+Products with custom imprinting use **WooCommerce variable products** with two attributes: `pa_size` (S/M/L/XL/XXL) and `pa_color` (Black/White/Gray). One product listing per garment type — no separate product per size/colour combination.
 
 SKU format: `{PRODUCT}-{COLOR}-{SIZE}` — e.g. `TSHIRT-BLACK-L`, `TSHIRT-WHITE-M`.
 
