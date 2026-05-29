@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class BlockCartIntegration {
 
-	const NAMESPACE = 'printengine';
+	const EXTENSION_NAMESPACE = 'printengine';
 
 	public static function register(): void {
 		// Register with the Store API integration registry.
@@ -31,7 +31,7 @@ class BlockCartIntegration {
 			->register_endpoint_data(
 				[
 					'endpoint'        => CartItemSchema::IDENTIFIER,
-					'namespace'       => self::NAMESPACE,
+					'namespace'       => self::EXTENSION_NAMESPACE,
 					'data_callback'   => [ self::class, 'cart_item_data' ],
 					'schema_callback' => [ self::class, 'cart_item_schema' ],
 					'schema_type'     => ARRAY_A,

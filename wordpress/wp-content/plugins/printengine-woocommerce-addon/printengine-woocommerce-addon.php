@@ -52,18 +52,65 @@ add_action( 'plugins_loaded', function () {
 }} );
 
 register_activation_hook( __FILE__, function () {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
+ 
+	// Prevent activation on unsupported PHP versions.
 	if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
-        deactivate_plugins( plugin_basename( __FILE__ ) );
-        wp_die( 'PrintEngine WooCommerce Addon requires PHP 8.0 or higher.' );
-    }
-
-	 add_option( 'printengine_wc_addon_version', PRINTENGINE_WC_ADDON_VERSION );
-	
+		deactivate_plugins( plugin_basename( __FILE__ ) );
+		wp_die( esc_html__( 'PrintEngine WooCommerce Addon requires PHP 8.0 or higher.', 'printengine-woocommerce-addon' ) );
+	}
+ 
+	// Store plugin version for future migration checks.
+	add_option( 'printengine_wc_addon_version', PRINTENGINE_WC_ADDON_VERSION );
+ 
+	// Initialise image library option if not already set.
 	if ( false === get_option( 'printengine_image_library' ) ) {
-        add_option( 'printengine_image_library', [] );
-    }
-
-	// Future activation logic here.
+		add_option( 'printengine_image_library', [] );
+	}
+ 
+	// Create global WooCommerce attributes if they don't exist yet.
+	if ( function_exists( 'wc_create_attribute' ) ) {
+		if ( ! taxonomy_exists( 'pa_size' ) ) {
+			$size_id = wc_create_attribute( [
+				'name'         => 'Size',
+				'slug'         => 'size',
+				'type'         => 'select',
+				'order_by'     => 'menu_order',
+				'has_archives' => false,
+			] );
+ 
+	
+			if ( ! is_wp_error( $size_id ) ) {
+				register_taxonomy( 'pa_size', 'product' );
+				foreach ( [ 'S', 'M', 'L', 'XL', 'XXL' ] as $term ) {
+					if ( ! term_exists( $term, 'pa_size' ) ) {
+						wp_insert_term( $term, 'pa_size' );
+					}
+				}
+			}
+		}
+ 
+		if ( ! taxonomy_exists( 'pa_color' ) ) {
+			$color_id = wc_create_attribute( [
+				'name'         => 'Color',
+				'slug'         => 'color',
+				'type'         => 'select',
+				'order_by'     => 'menu_order',
+				'has_archives' => false,
+			] );
+ 
+			if ( ! is_wp_error( $color_id ) ) {
+				register_taxonomy( 'pa_color', 'product' );
+				foreach ( [ 'Black', 'White', 'Gray' ] as $term ) {
+					if ( ! term_exists( $term, 'pa_color' ) ) {
+						wp_insert_term( $term, 'pa_color' );
+					}
+				}
+			}
+		}
+	}
 } );
 
 register_deactivation_hook( __FILE__, function () {
