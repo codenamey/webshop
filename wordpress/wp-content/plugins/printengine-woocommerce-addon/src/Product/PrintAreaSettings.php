@@ -6,6 +6,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Adds a "Print areas" meta box to the product edit screen.
+ *
+ * Stores which print areas are available for a product as an array,
+ * e.g. ['front'] or ['front', 'back'].
+ *
+ * Option key: _printengine_print_areas (post meta on the product).
+ */
 class PrintAreaSettings {
 
 	const META_KEY    = '_printengine_print_areas';
@@ -15,6 +23,10 @@ class PrintAreaSettings {
 		add_action( 'add_meta_boxes',                    [ self::class, 'add_meta_box' ] );
 		add_action( 'woocommerce_process_product_meta',  [ self::class, 'save_meta' ] );
 	}
+
+	// -----------------------------------------------------------------------
+	// Meta box
+	// -----------------------------------------------------------------------
 
 	public static function add_meta_box(): void {
 		add_meta_box(
@@ -48,20 +60,34 @@ class PrintAreaSettings {
 		if ( ! isset( $_POST['printengine_print_areas_nonce'] ) ) {
 			return;
 		}
+
 		if ( ! wp_verify_nonce(
 			sanitize_text_field( wp_unslash( $_POST['printengine_print_areas_nonce'] ) ),
 			'printengine_print_areas'
 		) ) {
 			return;
 		}
+
 		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
+
 		$raw   = isset( $_POST['printengine_print_areas'] ) ? (array) $_POST['printengine_print_areas'] : [];
 		$clean = array_values( array_intersect( $raw, self::VALID_AREAS ) );
+
 		update_post_meta( $post_id, self::META_KEY, $clean );
 	}
 
+	// -----------------------------------------------------------------------
+	// Public helpers
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Returns the allowed print areas for a product.
+	 * Defaults to ['front'] if none are set.
+	 *
+	 * @return string[]
+	 */
 	public static function get_areas( int $product_id ): array {
 		$areas = get_post_meta( $product_id, self::META_KEY, true );
 		if ( ! is_array( $areas ) || empty( $areas ) ) {
