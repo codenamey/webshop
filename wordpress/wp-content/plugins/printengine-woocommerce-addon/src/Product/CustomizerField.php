@@ -331,12 +331,21 @@ class CustomizerField {
 			}
 		}
 
+		$allowed_areas = \PrintEngine\Product\PrintAreaSettings::get_areas( $product_id );
+		$submitted_area = sanitize_key( wp_unslash( $_POST['print_config_print_area'] ?? 'front' ) );
+
+		if ( ! in_array( $submitted_area, $allowed_areas, true ) ) {
+			wc_add_notice( __( 'Invalid print area selected.', 'printengine-woocommerce-addon' ), 'error' );
+			return false;
+}
+
 		foreach ( $config->errors( self::TEXT_MAX_LENGTH ) as $error ) {
 			wc_add_notice( $error, 'error' );
 			return false;
 		}
 
 		return $passed;
+
 	}
 
 	// -----------------------------------------------------------------------
