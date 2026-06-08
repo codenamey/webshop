@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class BlockCartIntegration {
 
-	const EXTENSION_NAMESPACE = 'printengine';
+	const NAMESPACE = 'printengine';
 
 	public static function register(): void {
 		// Register with the Store API integration registry.
@@ -31,7 +31,7 @@ class BlockCartIntegration {
 			->register_endpoint_data(
 				[
 					'endpoint'        => CartItemSchema::IDENTIFIER,
-					'namespace'       => self::EXTENSION_NAMESPACE,
+					'namespace'       => self::NAMESPACE,
 					'data_callback'   => [ self::class, 'cart_item_data' ],
 					'schema_callback' => [ self::class, 'cart_item_schema' ],
 					'schema_type'     => ARRAY_A,
@@ -43,13 +43,19 @@ class BlockCartIntegration {
 	 * Returns the PrintEngine data for a cart item to expose via Store API.
 	 */
 	public static function cart_item_data( array $cart_item ): array {
-		$mode = $cart_item['printengine_print_mode'] ?? '';
-		$data = [ 'mode' => $mode ];
+		$config = \PrintEngine\PrintConfig::from_cart_item( $cart_item );
+		if ( ! $config ) {
+			return [ 'mode' => '', 'print_text' => '', 'image_url' => '' ];
+		}
 
-		if ( $mode === 'text' ) {
-			$data['print_text'] = $cart_item['printengine_print_text'] ?? '';
+		$data = [ 'mode' => $config->mode ];
+
+		if ( $config->mode === 'text' ) {
+			$data['print_text'] = $config->text;
 		} else {
-			$data['image_url'] = $cart_item['printengine_image_url'] ?? '';
+			$data['image_url'] = $config->attachment_id
+				? wp_get_attachment_url( $config->attachment_id )
+				: $config->image;
 		}
 
 		return $data;
