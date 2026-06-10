@@ -41,13 +41,41 @@ After activation, verify under **WooCommerce → Attributes** that both attribut
 ---
 
 ## How it works
+### Cart → Order dataflow
 
-1. Admin configures which print areas (front/back) are available per product via the **PrintEngine — Print areas** meta box on the product edit screen.
-2. Admin optionally adds images to the **Image Library** (WooCommerce → Image Library).
-3. Customer visits a product page, selects imprint type (text or image) and optionally a print area.
-4. On add-to-cart, the imprint data is validated and stored as a `print_config` JSON field on the cart item.
-5. On checkout, the `print_config` is copied to the order line item meta as `_print_config` for downstream DTF pipeline processing.
+1. PRODUCT PAGE <br>
+   Customer selects: variation (size + color) + imprint (text or image) + print area
+   └── PrintConfig::from_post() builds a validated config object
 
+2. ADD TO CART  [woocommerce_add_cart_item_data] <br>
+   └── PrintConfig JSON stored as cart item key: printengine_print_config
+
+3. CART PAGE <br>
+   └── woocommerce_get_item_data renders size / color / print area / imprint
+
+4. CHECKOUT  [woocommerce_checkout_create_order_line_item] <br>
+   └── PrintConfig JSON copied to order line item meta (see keys below)
+
+5. ORDER (admin) <br>
+   └── display_in_admin_order() renders a summary block: size, color, SKU,
+       print area, imprint text or image with download link
+
+6. DTF PIPELINE <br>
+   └── Read _printengine_print_config (full JSON) or individual keys below
+
+#### Order line item meta keys
+| Key | Type | Description |
+|---|---|---|
+| `_printengine_print_config` | JSON | Full PrintConfig — single source of truth |
+| `_printengine_size` | string | Clothing size slug, e.g. `l` |
+| `_printengine_color` | string | Color slug, e.g. `black` |
+| `_printengine_variation_sku` | string | SKU of selected variation, e.g. `TSHIRT-BLACK-L` |
+| `_printengine_print_area` | string | `front` or `back` |
+| `_printengine_mode` | string | `text` or `image` |
+| `_printengine_print_text` | string | Imprint text (text mode only) |
+| `_printengine_image_id` | int | WP attachment ID (image mode only) |
+| `_printengine_image_url` | string | Direct file URL for DTF download (image mode only) |
+| `_printengine_image_source` | string | `upload` or `library` (image mode only) |
 ---
 
 ## Requirements
