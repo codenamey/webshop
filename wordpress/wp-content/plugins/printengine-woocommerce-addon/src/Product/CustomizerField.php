@@ -37,6 +37,37 @@ class CustomizerField {
 
 		// Show in customer order confirmation / account.
 		add_filter( 'woocommerce_order_item_display_meta_value', [ self::class, 'display_meta_value' ], 10, 3 );
+
+		// Stay on product page after add to cart — show notice instead of redirecting.
+		add_filter( 'woocommerce_add_to_cart_redirect', [ self::class, 'stay_on_product_page' ], 10, 2 );
+		add_filter( 'wc_add_to_cart_message_html',      [ self::class, 'add_to_cart_message' ], 10, 2 );
+	}
+
+	/**
+	 * Redirect back to the product page instead of the cart after adding to cart.
+	 */
+	public static function stay_on_product_page( string $url, ?\WC_Product $product ): string {
+		if ( ! $product ) {
+			return $url;
+		}
+		if ( is_product() || isset( $_POST['add-to-cart'] ) ) {
+			return get_permalink( $product->get_id() );
+		}
+		return $url;
+	}
+
+	/**
+	 * Customise the "added to cart" notice to include a cart link.
+	 */
+	public static function add_to_cart_message( string $message, array $products ): string {
+		$cart_url = wc_get_cart_url();
+		$message  = sprintf(
+			'%s <a href="%s" class="button wc-forward">%s</a>',
+			__( '"Product" has been added to your cart.', 'printengine-woocommerce-addon' ),
+			esc_url( $cart_url ),
+			__( 'View cart', 'printengine-woocommerce-addon' )
+		);
+		return $message;
 	}
 
 	/**
@@ -82,11 +113,11 @@ class CustomizerField {
 				'maxTextLength' => self::TEXT_MAX_LENGTH,
 				'allowedTypes'  => [ 'image/jpeg', 'image/png', 'image/svg+xml' ],
 				'i18n' => [
-					'fileTooLarge'  => __( 'File is too large (max 10 Mt).', 'printengine-woocommerce-addon' ),
+					'fileTooLarge'  => __( 'File is too large (max 10 MB).', 'printengine-woocommerce-addon' ),
 					'invalidType'   => __( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ),
-					'textTooLong'   => __( 'Text is too long (max 20 characters).', 'printengine-woocommerce-addon' ),
-					'requiredText'  => __( 'Write custom text.', 'printengine-woocommerce-addon' ),
-					'requiredImage' => __( 'Choose or upload custom image.', 'printengine-woocommerce-addon' ),
+					'textTooLong'   => __( 'Text on liian pitkä.', 'printengine-woocommerce-addon' ),
+					'requiredText'  => __( 'Please enter imprint text.', 'printengine-woocommerce-addon' ),
+					'requiredImage' => __( 'Please select or upload an imprint image.', 'printengine-woocommerce-addon' ),
 				],
 			]
 		);
@@ -110,8 +141,8 @@ class CustomizerField {
 			'PrintEngineBlockData',
 			[
 				'i18n' => [
-					'printText'  => __( 'Custom text', 'printengine-woocommerce-addon' ),
-					'printImage' => __( 'Custom image', 'printengine-woocommerce-addon' ),
+					'printText'  => __( 'Imprint text', 'printengine-woocommerce-addon' ),
+					'printImage' => __( 'Imprint image', 'printengine-woocommerce-addon' ),
 				],
 			]
 		);
@@ -122,10 +153,14 @@ class CustomizerField {
 	// -----------------------------------------------------------------------
 
 	/** Maximum characters allowed in the print text field. */
-	const TEXT_MAX_LENGTH = 20;
+	const TEXT_MAX_LENGTH = 100;
 
 	public static function render_field(): void {
-		$library = ImageLibrary::get_library();
+		global $product;
+		$library    = ImageLibrary::get_library();
+		$product_id = $product instanceof \WC_Product ? $product->get_id() : get_the_ID();
+		$areas      = \PrintEngine\Product\PrintAreaSettings::get_areas( $product_id );
+		$multi_area = count( $areas ) > 1;
 		?>
 		<div class="printengine-customizer" id="printengine-customizer">
 
@@ -133,7 +168,21 @@ class CustomizerField {
 				<strong><?php esc_html_e( 'Imprint', 'printengine-woocommerce-addon' ); ?></strong>
 			</p>
 
-			<!-- Tab navigation — always shown (text + upload; library added when available) -->
+			<?php if ( $multi_area ) : ?>
+			<!-- Print area — only shown when product has multiple areas configured -->
+			<div class="printengine-field-row">
+				<label for="print_config_print_area"><?php esc_html_e( 'Print area', 'printengine-woocommerce-addon' ); ?></label>
+				<select id="print_config_print_area" name="print_config_print_area">
+					<?php foreach ( $areas as $area ) : ?>
+						<option value="<?php echo esc_attr( $area ); ?>"><?php echo esc_html( ucfirst( $area ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<?php else : ?>
+			<input type="hidden" name="print_config_print_area" value="<?php echo esc_attr( $areas[0] ); ?>" />
+			<?php endif; ?>
+
+			<!-- Tab navigation -->
 			<div class="printengine-tabs" role="tablist">
 				<button type="button" role="tab" aria-selected="true"
 					class="printengine-tab printengine-tab--active"
@@ -149,7 +198,7 @@ class CustomizerField {
 				<button type="button" role="tab" aria-selected="false"
 					class="printengine-tab"
 					data-tab="library">
-					<?php esc_html_e( 'Choose image from library', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'Choose from library', 'printengine-woocommerce-addon' ); ?>
 				</button>
 				<?php endif; ?>
 			</div>
@@ -160,7 +209,7 @@ class CustomizerField {
 					<?php
 					printf(
 						/* translators: %d = max character count */
-						esc_html__( 'Printed text (max %d characters)', 'printengine-woocommerce-addon' ),
+						esc_html__( 'Imprint text (max %d characters)', 'printengine-woocommerce-addon' ),
 						self::TEXT_MAX_LENGTH
 					);
 					?>
@@ -170,10 +219,10 @@ class CustomizerField {
 					name="printengine_print_text"
 					rows="3"
 					maxlength="<?php echo esc_attr( self::TEXT_MAX_LENGTH ); ?>"
-					placeholder="<?php esc_attr_e( 'Write your text here…', 'printengine-woocommerce-addon' ); ?>"></textarea>
+					placeholder="<?php esc_attr_e( 'Enter imprint text…', 'printengine-woocommerce-addon' ); ?>"></textarea>
 				<p class="printengine-char-count" id="printengine-text-count" aria-live="polite">
 					<span id="printengine-text-remaining"><?php echo esc_html( self::TEXT_MAX_LENGTH ); ?></span>
-					<?php esc_html_e( 'characters left', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'characters remaining', 'printengine-woocommerce-addon' ); ?>
 				</p>
 				<p class="printengine-error" id="printengine-text-error" hidden></p>
 			</div>
@@ -181,7 +230,7 @@ class CustomizerField {
 			<!-- Upload panel -->
 			<div class="printengine-panel" id="printengine-panel-upload" hidden>
 				<label for="printengine_upload">
-					<?php esc_html_e( 'Upload image (JPG, PNG tai SVG, max 10 Mt)', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'Upload image (JPG, PNG or SVG, max 10 MB)', 'printengine-woocommerce-addon' ); ?>
 				</label>
 				<input type="file"
 					id="printengine_upload"
@@ -201,6 +250,7 @@ class CustomizerField {
 						$thumb = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
 						$title = get_the_title( $attachment_id );
 						if ( ! $url ) continue;
+						$thumb = $thumb ?: $url;
 					?>
 					<button type="button"
 						class="printengine-library-item"
@@ -219,7 +269,7 @@ class CustomizerField {
 			</div>
 			<?php endif; ?>
 
-			<!-- Hidden fields posted with Add to cart -->
+			<!-- Hidden fields -->
 			<input type="hidden" id="printengine_image_source" name="printengine_image_source" value="" />
 			<input type="hidden" id="printengine_library_attachment_id" name="printengine_library_attachment_id" value="" />
 			<input type="hidden" id="printengine_print_mode" name="printengine_print_mode" value="text" />
@@ -234,99 +284,69 @@ class CustomizerField {
 
 	public static function validate( bool $passed, int $product_id ): bool {
 		// Verify WooCommerce's own add-to-cart nonce only if it is present.
-		// Some themes do not include it, so we only reject if it exists but is invalid.
 		$nonce = sanitize_text_field( wp_unslash( $_POST['woocommerce-add-to-cart-nonce'] ?? '' ) );
 		if ( $nonce && ! wp_verify_nonce( $nonce, 'woocommerce-add-to-cart' ) ) {
 			return false;
 		}
 
-		$mode = isset( $_POST['printengine_print_mode'] )
-			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
-			: 'text';
+		$config = \PrintEngine\PrintConfig::from_post();
 
-		// Text mode validation.
-		if ( $mode === 'text' ) {
-			$text = isset( $_POST['printengine_print_text'] )
-				? sanitize_textarea_field( wp_unslash( $_POST['printengine_print_text'] ) )
-				: '';
+		// SVG content check for uploaded files.
+		$mode = sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ?? 'text' ) );
+		if ( $mode !== 'text' ) {
+			$source = sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ?? '' ) );
 
-			if ( $text === '' ) {
-				wc_add_notice(
-					__( 'Write custom text before adding to cart.', 'printengine-woocommerce-addon' ),
-					'error'
+			if ( $source === 'upload' ) {
+				if ( empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
+					wc_add_notice( __( 'Please add an imprint image before adding to cart.', 'printengine-woocommerce-addon' ), 'error' );
+					return false;
+				}
+
+				// Server-side file size check (10 MB).
+				$max_bytes = 10 * 1024 * 1024;
+				if ( (int) $_FILES['printengine_upload']['size'] > $max_bytes ) {
+					wc_add_notice( __( 'File is too large (max 10 MB).', 'printengine-woocommerce-addon' ), 'error' );
+					return false;
+				}
+
+				// Use WordPress file type validation instead of mime_content_type().
+				$file_name = sanitize_file_name( $_FILES['printengine_upload']['name'] );
+				$check     = wp_check_filetype_and_ext(
+					$_FILES['printengine_upload']['tmp_name'],
+					$file_name
 				);
-				return false;
+
+				$allowed_types = [ 'image/jpeg', 'image/png', 'image/svg+xml' ];
+				if ( empty( $check['type'] ) || ! in_array( $check['type'], $allowed_types, true ) ) {
+					wc_add_notice( __( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ), 'error' );
+					return false;
+				}
+
+				if ( $check['type'] === 'image/svg+xml' ) {
+					$svg = file_get_contents( $_FILES['printengine_upload']['tmp_name'] );
+					if ( $svg === false
+						|| preg_match( '/<script/i', $svg )
+						|| preg_match( '/\bon\w+\s*=/i', $svg )
+						|| preg_match( '/javascript\s*:/i', $svg )
+					) {
+						wc_add_notice( __( 'SVG file contains prohibited content.', 'printengine-woocommerce-addon' ), 'error' );
+						return false;
+					}
+				}
 			}
 
-			if ( mb_strlen( $text ) > self::TEXT_MAX_LENGTH ) {
-				wc_add_notice(
-					sprintf(
-						/* translators: %d = max character count */
-						__( 'Custom text is too long (max %d characters).', 'printengine-woocommerce-addon' ),
-						self::TEXT_MAX_LENGTH
-					),
-					'error'
-				);
-				return false;
-			}
-
-			return $passed;
-		}
-
-		// Image mode validation.
-		$source = isset( $_POST['printengine_image_source'] )
-			? sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ) )
-			: '';
-
-		// Uploaded file — server-side type and SVG content check.
-		if ( $source === 'upload' ) {
-			if ( empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
-				wc_add_notice(
-					__( 'Choose an image before adding to cart.', 'printengine-woocommerce-addon' ),
-					'error'
-				);
-				return false;
-			}
-
-			$mime    = mime_content_type( $_FILES['printengine_upload']['tmp_name'] );
-			$allowed = [ 'image/jpeg', 'image/png', 'image/svg+xml' ];
-
-			if ( ! in_array( $mime, $allowed, true ) ) {
-				wc_add_notice(
-					__( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ),
-					'error'
-				);
-				return false;
-			}
-
-			// SVG-specific: reject files containing inline scripts or event handlers.
-			if ( $mime === 'image/svg+xml' ) {
-				$svg = file_get_contents( $_FILES['printengine_upload']['tmp_name'] );
-				if ( $svg === false
-					|| preg_match( '/<script/i', $svg )
-					|| preg_match( '/\bon\w+\s*=/i', $svg )
-					|| preg_match( '/javascript\s*:/i', $svg )
-				) {
-					wc_add_notice(
-						__( 'SVG files must not contain inline scripts or event handlers.', 'printengine-woocommerce-addon' ),
-						'error'
-					);
+			if ( $source === 'library' ) {
+				$attachment_id = absint( $_POST['printengine_library_attachment_id'] ?? 0 );
+				if ( ! $attachment_id || ! in_array( $attachment_id, ImageLibrary::get_library(), true ) ) {
+					wc_add_notice( __( 'Please select an image from the library before adding to cart.', 'printengine-woocommerce-addon' ), 'error' );
 					return false;
 				}
 			}
 		}
 
-		// Library selection.
-		if ( $source === 'library' ) {
-			$attachment_id = absint( $_POST['printengine_library_attachment_id'] ?? 0 );
-
-			if ( ! $attachment_id || ! in_array( $attachment_id, ImageLibrary::get_library(), true ) ) {
-				wc_add_notice(
-					__( 'Choose an image before adding to cart.', 'printengine-woocommerce-addon' ),
-					'error'
-				);
-				return false;
-			}
+		foreach ( $config->errors( self::TEXT_MAX_LENGTH ) as $error ) {
+			wc_add_notice( $error, 'error' );
+			return false;
 		}
 
 		return $passed;
@@ -337,78 +357,61 @@ class CustomizerField {
 	// -----------------------------------------------------------------------
 
 	public static function save_to_cart( array $cart_item_data, int $product_id ): array {
-		$mode = isset( $_POST['printengine_print_mode'] )
-			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
-			: 'text';
+		$config = \PrintEngine\PrintConfig::from_post();
 
-		$cart_item_data['printengine_print_mode'] = $mode;
-
-		// Text mode.
-		if ( $mode === 'text' ) {
-			$text = isset( $_POST['printengine_print_text'] )
-				? sanitize_textarea_field( wp_unslash( $_POST['printengine_print_text'] ) )
-				: '';
-
-			if ( $text !== '' ) {
-				$cart_item_data['printengine_print_text'] = mb_substr( $text, 0, self::TEXT_MAX_LENGTH );
-			}
-
-			return $cart_item_data;
-		}
-
-		// Image mode.
-		$source = isset( $_POST['printengine_image_source'] )
-			? sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ) )
-			: '';
-
-		if ( $source === 'upload' && ! empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
-			// Move uploaded file to WP uploads via the media API.
+		// Handle file upload — resolve attachment before serialising.
+		if ( $config->mode !== 'text' && $config->image_source === 'upload'
+			&& ! empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 			require_once ABSPATH . 'wp-admin/includes/image.php';
 
 			$attachment_id = media_handle_upload( 'printengine_upload', 0 );
-
 			if ( ! is_wp_error( $attachment_id ) ) {
-				$cart_item_data['printengine_image_attachment_id'] = $attachment_id;
-				$cart_item_data['printengine_image_url']           = wp_get_attachment_url( $attachment_id );
-				$cart_item_data['printengine_image_source']        = 'upload';
+				$config->attachment_id = $attachment_id;
+				$config->image         = (string) $attachment_id;
 			}
 		}
 
-		if ( $source === 'library' ) {
-			$attachment_id = absint( $_POST['printengine_library_attachment_id'] ?? 0 );
+		if ( $config->mode !== 'text' && $config->image_source === 'library' && $config->attachment_id ) {
+			$config->image = (string) $config->attachment_id;
+		}
 
-			if ( $attachment_id && in_array( $attachment_id, ImageLibrary::get_library(), true ) ) {
-				$cart_item_data['printengine_image_attachment_id'] = $attachment_id;
-				$cart_item_data['printengine_image_url']           = wp_get_attachment_url( $attachment_id );
-				$cart_item_data['printengine_image_source']        = 'library';
-			}
+		// Store as single canonical JSON structure.
+		$cart_item_data[ \PrintEngine\PrintConfig::CART_KEY ] = $config->to_json();
+
+		// Keep legacy fields for block-cart integration.
+		$cart_item_data['printengine_print_mode'] = $config->mode;
+		if ( $config->mode === 'text' ) {
+			$cart_item_data['printengine_print_text'] = $config->text;
+		} else {
+			$cart_item_data['printengine_image_attachment_id'] = $config->attachment_id;
+			$cart_item_data['printengine_image_url']           = wp_get_attachment_url( $config->attachment_id ) ?: '';
+			$cart_item_data['printengine_image_source']        = $config->image_source;
 		}
 
 		return $cart_item_data;
 	}
 
 	public static function display_in_cart( array $item_data, array $cart_item ): array {
-		$mode = $cart_item['printengine_print_mode'] ?? '';
-
-		if ( $mode === 'text' && ! empty( $cart_item['printengine_print_text'] ) ) {
-			$item_data[] = [
-				'key'   => __( 'Custom text', 'printengine-woocommerce-addon' ),
-				'value' => esc_html( $cart_item['printengine_print_text'] ),
-			];
+		$config = \PrintEngine\PrintConfig::from_cart_item( $cart_item );
+		if ( ! $config ) {
+			return $item_data;
 		}
 
-		if ( $mode !== 'text' && ! empty( $cart_item['printengine_image_url'] ) ) {
-			$thumb = wp_get_attachment_image(
-				$cart_item['printengine_image_attachment_id'],
-				'thumbnail'
-			);
+		if ( $config->size ) {
+			$item_data[] = [ 'key' => __( 'Size', 'printengine-woocommerce-addon' ), 'value' => esc_html( strtoupper( $config->size ) ) ];
+		}
+		if ( $config->color ) {
+			$item_data[] = [ 'key' => __( 'Color', 'printengine-woocommerce-addon' ), 'value' => esc_html( ucfirst( $config->color ) ) ];
+		}
+		$item_data[] = [ 'key' => __( 'Print area', 'printengine-woocommerce-addon' ), 'value' => esc_html( ucfirst( $config->print_area ) ) ];
 
-			$item_data[] = [
-				'key'   => __( 'Custom image', 'printengine-woocommerce-addon' ),
-				'value' => $thumb ?: esc_url( $cart_item['printengine_image_url'] ),
-			];
+		if ( $config->mode === 'text' && $config->text ) {
+			$item_data[] = [ 'key' => __( 'Imprint text', 'printengine-woocommerce-addon' ), 'value' => esc_html( $config->text ) ];
+		} elseif ( $config->mode !== 'text' && $config->attachment_id ) {
+			$thumb = wp_get_attachment_image( $config->attachment_id, 'thumbnail' );
+			$item_data[] = [ 'key' => __( 'Imprint image', 'printengine-woocommerce-addon' ), 'value' => $thumb ?: esc_url( wp_get_attachment_url( $config->attachment_id ) ) ];
 		}
 
 		return $item_data;
@@ -424,27 +427,65 @@ class CustomizerField {
 		array $values,
 		\WC_Order $order
 	): void {
-		$mode = $values['printengine_print_mode'] ?? '';
-		$item->add_meta_data( '_printengine_print_mode', sanitize_key( $mode ), true );
-
-		if ( $mode === 'text' && ! empty( $values['printengine_print_text'] ) ) {
-			$text = sanitize_textarea_field( $values['printengine_print_text'] );
-			$item->add_meta_data( '_printengine_print_text', $text, true );
-			$item->add_meta_data( __( 'Custom text', 'printengine-woocommerce-addon' ), $text, true );
+		if ( empty( $values[ \PrintEngine\PrintConfig::CART_KEY ] ) ) {
 			return;
 		}
 
-		if ( ! empty( $values['printengine_image_attachment_id'] ) ) {
-			$item->add_meta_data( '_printengine_image_attachment_id', absint( $values['printengine_image_attachment_id'] ), true );
-			$item->add_meta_data( '_printengine_image_url', esc_url_raw( $values['printengine_image_url'] ), true );
-			$item->add_meta_data( '_printengine_image_source', sanitize_text_field( $values['printengine_image_source'] ), true );
+		$config = \PrintEngine\PrintConfig::from_json( $values[ \PrintEngine\PrintConfig::CART_KEY ] );
+		if ( ! $config ) {
+			return;
+		}
 
-			// Human-readable label for emails / confirmation page.
-			$item->add_meta_data(
-				__( 'Custom image', 'printengine-woocommerce-addon' ),
-				absint( $values['printengine_image_attachment_id'] ),
-				true
-			);
+		/*
+		 * Meta key reference — all keys prefixed with _ are hidden from
+		 * WooCommerce's default order item meta display.
+		 *
+		 * Technical (DTF pipeline):
+		 *   _printengine_print_config    Full PrintConfig JSON (single source of truth)
+		 *   _printengine_size            Clothing size slug, e.g. "l"
+		 *   _printengine_color           Color slug, e.g. "black"
+		 *   _printengine_print_area      Print area slug, e.g. "front"
+		 *   _printengine_mode            "text" or "image"
+		 *   _printengine_print_text      Imprint text (text mode)
+		 *   _printengine_image_id        WP attachment ID (image mode)
+		 *   _printengine_image_url       Direct file URL for DTF download (image mode)
+		 *   _printengine_image_source    "upload" or "library" (image mode)
+		 *   _printengine_variation_sku   SKU of the selected variation
+		 */
+
+		// Full config JSON — single source of truth for DTF pipeline.
+		$item->add_meta_data( '_printengine_print_config', $values[ \PrintEngine\PrintConfig::CART_KEY ], true );
+
+		// Variation data.
+		if ( $config->size ) {
+			$item->add_meta_data( '_printengine_size', strtolower( $config->size ), true );
+		}
+		if ( $config->color ) {
+			$item->add_meta_data( '_printengine_color', strtolower( $config->color ), true );
+		}
+
+		// Variation SKU — pulled from the WC order item directly.
+		$variation_id = $item->get_variation_id();
+		if ( $variation_id ) {
+			$variation = wc_get_product( $variation_id );
+			if ( $variation ) {
+				$item->add_meta_data( '_printengine_variation_sku', $variation->get_sku(), true );
+			}
+		}
+
+		// Print config fields.
+		$item->add_meta_data( '_printengine_print_area', $config->print_area, true );
+		$item->add_meta_data( '_printengine_mode', $config->mode, true );
+
+		if ( $config->mode === 'text' ) {
+			$item->add_meta_data( '_printengine_print_text', $config->text, true );
+		} else {
+			$attachment_id = $config->attachment_id;
+			$image_url     = $attachment_id ? wp_get_attachment_url( $attachment_id ) : $config->image;
+
+			$item->add_meta_data( '_printengine_image_id',     $attachment_id, true );
+			$item->add_meta_data( '_printengine_image_url',    $image_url ?: '', true );
+			$item->add_meta_data( '_printengine_image_source', $config->image_source, true );
 		}
 	}
 
@@ -453,7 +494,7 @@ class CustomizerField {
 	 * and the My Account order view.
 	 */
 	public static function display_meta_value( $value, \WC_Meta_Data $meta, \WC_Order_Item $item ) {
-		if ( $meta->key !== __( 'Custom image', 'printengine-woocommerce-addon' ) ) {
+		if ( $meta->key !== __( 'Imprint image', 'printengine-woocommerce-addon' ) ) {
 			return $value;
 		}
 
@@ -468,37 +509,70 @@ class CustomizerField {
 	// -----------------------------------------------------------------------
 
 	public static function display_in_admin_order( int $item_id, \WC_Order_Item $item, $product ): void {
-		$mode = $item->get_meta( '_printengine_print_mode' );
+		$json = $item->get_meta( '_printengine_print_config' );
+		if ( ! $json ) {
+			return;
+		}
 
+		$config = \PrintEngine\PrintConfig::from_json( $json );
+		if ( ! $config ) {
+			return;
+		}
+
+		$size        = $item->get_meta( '_printengine_size' );
+		$color       = $item->get_meta( '_printengine_color' );
+		$print_area  = $item->get_meta( '_printengine_print_area' );
+		$mode        = $item->get_meta( '_printengine_mode' );
+		$sku         = $item->get_meta( '_printengine_variation_sku' );
+
+		echo '<div style="margin-top:10px;padding:10px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:4px;font-size:0.9em;line-height:1.8;">';
+		echo '<strong style="display:block;margin-bottom:6px;font-size:1em;">' . esc_html__( 'Print configuration', 'printengine-woocommerce-addon' ) . '</strong>';
+
+		// Variation data.
+		if ( $size ) {
+			echo '<span style="color:#666;">' . esc_html__( 'Size', 'printengine-woocommerce-addon' ) . ':</span> <strong>' . esc_html( strtoupper( $size ) ) . '</strong> &nbsp;';
+		}
+		if ( $color ) {
+			echo '<span style="color:#666;">' . esc_html__( 'Color', 'printengine-woocommerce-addon' ) . ':</span> <strong>' . esc_html( ucfirst( $color ) ) . '</strong>';
+		}
+		if ( $size || $color ) {
+			echo '<br />';
+		}
+		if ( $sku ) {
+			echo '<span style="color:#666;">SKU:</span> <code>' . esc_html( $sku ) . '</code><br />';
+		}
+
+		// Print area.
+		if ( $print_area ) {
+			echo '<span style="color:#666;">' . esc_html__( 'Print area', 'printengine-woocommerce-addon' ) . ':</span> <strong>' . esc_html( ucfirst( $print_area ) ) . '</strong><br />';
+		}
+
+		// Imprint content.
 		if ( $mode === 'text' ) {
 			$text = $item->get_meta( '_printengine_print_text' );
-			if ( ! $text ) {
-				return;
+			if ( $text ) {
+				echo '<span style="color:#666;">' . esc_html__( 'Imprint text', 'printengine-woocommerce-addon' ) . ':</span> <strong>' . esc_html( $text ) . '</strong><br />';
 			}
-			echo '<div class="printengine-admin-image" style="margin-top:8px;">';
-			echo '<strong>' . esc_html__( 'Custom text', 'printengine-woocommerce-addon' ) . '</strong><br />';
-			echo '<span>' . esc_html( $text ) . '</span>';
-			echo '</div>';
-			return;
+		} else {
+			$image_id  = absint( $item->get_meta( '_printengine_image_id' ) );
+			$image_url = $item->get_meta( '_printengine_image_url' );
+			$source    = $item->get_meta( '_printengine_image_source' );
+
+			$source_label = $source === 'library'
+				? __( 'from library', 'printengine-woocommerce-addon' )
+				: __( 'customer upload', 'printengine-woocommerce-addon' );
+
+			echo '<span style="color:#666;">' . esc_html__( 'Imprint image', 'printengine-woocommerce-addon' ) . '</span> <em>(' . esc_html( $source_label ) . ')</em>:<br />';
+
+			if ( $image_id ) {
+				$img = wp_get_attachment_image( $image_id, [ 80, 80 ] );
+				echo '<a href="' . esc_url( $image_url ) . '" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;">' . wp_kses_post( $img ) . '</a> ';
+			}
+			if ( $image_url ) {
+				echo '<a href="' . esc_url( $image_url ) . '" target="_blank" rel="noopener" style="font-size:0.85em;">' . esc_html__( 'Download file', 'printengine-woocommerce-addon' ) . '</a>';
+			}
 		}
 
-		$attachment_id = absint( $item->get_meta( '_printengine_image_attachment_id' ) );
-
-		if ( ! $attachment_id ) {
-			return;
-		}
-
-		$img    = wp_get_attachment_image( $attachment_id, 'thumbnail' );
-		$url    = wp_get_attachment_url( $attachment_id );
-		$source = $item->get_meta( '_printengine_image_source' );
-		$label  = $source === 'library'
-			? __( 'from library', 'printengine-woocommerce-addon' )
-			: __( 'uploaded by customer', 'printengine-woocommerce-addon' );
-
-		echo '<div class="printengine-admin-image" style="margin-top:8px;">';
-		echo '<strong>' . esc_html__( 'Custom image', 'printengine-woocommerce-addon' ) . '</strong>';
-		echo ' <em>(' . esc_html( $label ) . ')</em><br />';
-		echo '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">' . wp_kses_post( $img ) . '</a>';
 		echo '</div>';
 	}
 }

@@ -11,6 +11,29 @@
     font-size: 1em;
 }
 
+/* Field rows (size, color, print area) */
+.printengine-field-row {
+    margin-bottom: 0.75em;
+}
+
+.printengine-field-row label {
+    display: block;
+    margin-bottom: 0.3em;
+    font-size: 0.9em;
+    color: #444;
+    font-weight: 600;
+}
+
+.printengine-field-row select {
+    display: block;
+    width: 100%;
+    padding: 0.4em 0.6em;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.95em;
+    background: #fff;
+}
+
 /* Tabs */
 .printengine-tabs {
     display: flex;

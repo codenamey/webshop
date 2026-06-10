@@ -35,38 +35,75 @@ add_action( 'plugins_loaded', function () {
 
 	if ( $resolved_path && $base_path && str_starts_with( $resolved_path, $base_path ) ) {
 		require_once $resolved_path;
-	} 
-	// Added else statement to help diagnosing broken deployments 
-	// if bootstrap file cannot be loaded
-	else {
- 		add_action( 'admin_notices', static function () {
- 			echo '<div class="notice notice-error"><p>';
- 			echo esc_html__( 'PrintEngine WooCommerce Addon failed to load its bootstrap file.', 'printengine-woocommerce-addon' );
- 			echo '</p></div>';
- 		} );
- 		return;
+	} else {
+		add_action( 'admin_notices', static function () {
+			echo '<div class="notice notice-error"><p>';
+			echo esc_html__( 'PrintEngine WooCommerce Addon failed to load its bootstrap file.', 'printengine-woocommerce-addon' );
+			echo '</p></div>';
+		} );
+		return;
+	}
 
 	if ( class_exists( '\PrintEngine\Plugin' ) ) {
 		\PrintEngine\Plugin::init();
 	}
-}} );
+} );
 
 register_activation_hook( __FILE__, function () {
+	if ( ! current_user_can( 'activate_plugins' ) ) {
+		return;
+	}
+
 	if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
-        deactivate_plugins( plugin_basename( __FILE__ ) );
-        wp_die( 'PrintEngine WooCommerce Addon requires PHP 8.0 or higher.' );
-    }
+		deactivate_plugins( plugin_basename( __FILE__ ) );
+		wp_die( esc_html__( 'PrintEngine WooCommerce Addon requires PHP 8.0 or higher.', 'printengine-woocommerce-addon' ) );
+	}
 
-	 add_option( 'printengine_wc_addon_version', PRINTENGINE_WC_ADDON_VERSION );
-	
+	add_option( 'printengine_wc_addon_version', PRINTENGINE_WC_ADDON_VERSION );
+
 	if ( false === get_option( 'printengine_image_library' ) ) {
-        add_option( 'printengine_image_library', [] );
-    }
+		add_option( 'printengine_image_library', [] );
+	}
 
-	// Future activation logic here.
+	if ( function_exists( 'wc_create_attribute' ) ) {
+		if ( ! taxonomy_exists( 'pa_clothing_size' ) ) {
+			$size_id = wc_create_attribute( [
+				'name'         => 'Clothing size',
+				'slug'         => 'clothing_size',
+				'type'         => 'select',
+				'order_by'     => 'menu_order',
+				'has_archives' => false,
+			] );
+			if ( ! is_wp_error( $size_id ) ) {
+				register_taxonomy( 'pa_clothing_size', 'product' );
+				foreach ( [ 'S', 'M', 'L', 'XL', 'XXL' ] as $term ) {
+					if ( ! term_exists( $term, 'pa_clothing_size' ) ) {
+						wp_insert_term( $term, 'pa_clothing_size' );
+					}
+				}
+			}
+		}
+
+		if ( ! taxonomy_exists( 'pa_color' ) ) {
+			$color_id = wc_create_attribute( [
+				'name'         => 'Color',
+				'slug'         => 'color',
+				'type'         => 'select',
+				'order_by'     => 'menu_order',
+				'has_archives' => false,
+			] );
+			if ( ! is_wp_error( $color_id ) ) {
+				register_taxonomy( 'pa_color', 'product' );
+				foreach ( [ 'Black', 'White', 'Gray' ] as $term ) {
+					if ( ! term_exists( $term, 'pa_color' ) ) {
+						wp_insert_term( $term, 'pa_color' );
+					}
+				}
+			}
+		}
+	}
 } );
 
 register_deactivation_hook( __FILE__, function () {
 	// wp_clear_scheduled_hook( 'printengine_cleanup_orphan_uploads' );
-	// Future deactivation logic here.
 } );
