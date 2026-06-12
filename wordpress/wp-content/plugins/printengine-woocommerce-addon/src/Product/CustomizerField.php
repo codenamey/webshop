@@ -43,11 +43,23 @@ class CustomizerField {
 	 * is submitted via a standard multipart form POST.
 	 */
 	public static function disable_ajax_add_to_cart( bool $supported, string $feature, \WC_Product $product ): bool {
-		if ( $feature === 'ajax_add_to_cart' ) {
+
+		if ( $feature !== 'ajax_add_to_cart' ) {
+			return $supported;
+		}
+
+		// Check if print customization is enabled for this product
+		$enabled = get_post_meta( $product->get_id(), '_printengine_enabled', true );
+
+		if ( $enabled === 'yes' ) {
+			// Disable AJAX add-to-cart only for customizable products
 			return false;
 		}
+
+		// Otherwise keep WooCommerce default behavior
 		return $supported;
 	}
+
 
 	// -----------------------------------------------------------------------
 	// Assets
