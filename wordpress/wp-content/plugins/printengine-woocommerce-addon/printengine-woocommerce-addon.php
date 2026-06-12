@@ -42,10 +42,54 @@ add_action( 'plugins_loaded', function () {
 	}
 } );
 
+add_action( 'woocommerce_order_status_completed', function( $order_id ) {
+    $order = wc_get_order( $order_id );
+
+    foreach ( $order->get_items() as $item ) {
+        $attachment_id = $item->get_meta( '_printengine_attachment_id', true );
+        if ( $attachment_id ) {
+            delete_post_meta( $attachment_id, '_printengine_temp_upload' );
+        }
+    }
+});
+
+add_action( 'printengine_cleanup_temp_uploads', 'printengine_cleanup_temp_uploads_callback' );
+
+function printengine_cleanup_temp_uploads_callback() {
+
+    $days = 3;
+    $threshold = time() - ( $days * DAY_IN_SECONDS );
+
+    $query = new WP_Query([
+        'post_type'      => 'attachment',
+        'posts_per_page' => -1,
+        'meta_query'     => [
+            [
+                'key'     => '_printengine_temp_upload',
+                'value'   => $threshold,
+                'compare' => '<',
+                'type'    => 'NUMERIC',
+            ],
+        ],
+        'fields' => 'ids',
+    ]);
+
+    foreach ( $query->posts as $attachment_id ) {
+        wp_delete_attachment( $attachment_id, true );
+    }
+}
+
+
+
 register_activation_hook( __FILE__, function () {
 	if ( ! current_user_can( 'activate_plugins' ) ) {
 		return;
 	}
+
+	if ( ! wp_next_scheduled( 'printengine_cleanup_temp_uploads' ) ) {
+    wp_schedule_event( time(), 'daily', 'printengine_cleanup_temp_uploads' );
+	}
+
 	// Future activation logic here.
 } );
 

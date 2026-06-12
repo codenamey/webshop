@@ -378,58 +378,108 @@ class CustomizerField {
 	// Cart
 	// -----------------------------------------------------------------------
 
-	public static function save_to_cart( array $cart_item_data, int $product_id ): array {
+	public static function save_to_cart( $cart_item_data, $product_id ) {
+
+		// Determine mode
 		$mode = isset( $_POST['printengine_print_mode'] )
 			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
 			: 'text';
 
-		$cart_item_data['printengine_print_mode'] = $mode;
-
-		// Text mode.
+		//
+		// TEXT MODE
+		//
 		if ( $mode === 'text' ) {
 			$text = isset( $_POST['printengine_print_text'] )
 				? sanitize_textarea_field( wp_unslash( $_POST['printengine_print_text'] ) )
 				: '';
 
 			if ( $text !== '' ) {
-				$cart_item_data['printengine_print_text'] = mb_substr( $text, 0, self::TEXT_MAX_LENGTH );
+				$cart_item_data['printengine_text'] = $text;
 			}
 
 			return $cart_item_data;
 		}
 
-		// Image mode.
+		//
+		// IMAGE MODE
+		//
 		$source = isset( $_POST['printengine_image_source'] )
 			? sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ) )
 			: '';
 
-		if ( $source === 'upload' && ! empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
-			// Move uploaded file to WP uploads via the media API.
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-
-			$attachment_id = media_handle_upload( 'printengine_upload', 0 );
-
-			if ( ! is_wp_error( $attachment_id ) ) {
-				$cart_item_data['printengine_image_attachment_id'] = $attachment_id;
-				$cart_item_data['printengine_image_url']           = wp_get_attachment_url( $attachment_id );
-				$cart_item_data['printengine_image_source']        = 'upload';
-			}
-		}
-
 		if ( $source === 'library' ) {
 			$attachment_id = absint( $_POST['printengine_library_attachment_id'] ?? 0 );
+			if ( $attachment_id ) {
+				$cart_item_data['printengine_attachment_id'] = $attachment_id;
+			}
+			return $cart_item_data;
+		}
 
-			if ( $attachment_id && in_array( $attachment_id, ImageLibrary::get_library(), true ) ) {
-				$cart_item_data['printengine_image_attachment_id'] = $attachment_id;
-				$cart_item_data['printengine_image_url']           = wp_get_attachment_url( $attachment_id );
-				$cart_item_data['printengine_image_source']        = 'library';
+		//
+		// UPLOAD MODE
+		//
+		if ( $source === 'upload' ) {
+
+			// Optional but recommended: require login for uploads
+			if ( ! is_user_logged_in() ) {
+				wc_add_notice(
+					__( 'You must be logged in to upload images.', 'printengine-woocommerce-addon' ),
+					'error'
+				);
+				return $cart_item_data;
+			}
+
+			//
+			// RATE LIMITING: limit uploads per IP per hour
+			//
+			$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+			$key = 'printengine_upload_count_' . md5( $ip );
+			$count = (int) get_transient( $key );
+
+			$limit = 20; // max uploads per hour per IP
+
+			if ( $count >= $limit ) {
+				wc_add_notice(
+					__( 'Too many uploads from your IP. Please try again later.', 'printengine-woocommerce-addon' ),
+					'error'
+				);
+				return $cart_item_data;
+			}
+
+			// increment counter
+			set_transient( $key, $count + 1, HOUR_IN_SECONDS );
+
+			//
+			// HANDLE UPLOAD
+			//
+			if ( ! empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
+
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				require_once ABSPATH . 'wp-admin/includes/media.php';
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+
+				$attachment_id = media_handle_upload( 'printengine_upload', 0 );
+
+				if ( is_wp_error( $attachment_id ) ) {
+					wc_add_notice(
+						__( 'Image upload failed. Please try again.', 'printengine-woocommerce-addon' ),
+						'error'
+					);
+					return $cart_item_data;
+				}
+
+				// Mark as temporary (for later cleanup)
+				update_post_meta( $attachment_id, '_printengine_temp_upload', time() );
+
+				// Store in cart item
+				$cart_item_data['printengine_attachment_id'] = $attachment_id;
 			}
 		}
 
 		return $cart_item_data;
+
 	}
+
 
 	public static function display_in_cart( array $item_data, array $cart_item ): array {
 		$mode = $cart_item['printengine_print_mode'] ?? '';
