@@ -233,7 +233,6 @@ class CustomizerField {
 
 	public static function validate( bool $passed, int $product_id ): bool {
 		// Verify WooCommerce's own add-to-cart nonce only if it is present.
-		// Some themes do not include it, so we only reject if it exists but is invalid.
 		$nonce = sanitize_text_field( wp_unslash( $_POST['woocommerce-add-to-cart-nonce'] ?? '' ) );
 		if ( $nonce && ! wp_verify_nonce( $nonce, 'woocommerce-add-to-cart' ) ) {
 			return false;
@@ -243,7 +242,9 @@ class CustomizerField {
 			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
 			: 'text';
 
-		// Text mode validation.
+		//
+		// TEXT MODE
+		//
 		if ( $mode === 'text' ) {
 			$text = isset( $_POST['printengine_print_text'] )
 				? sanitize_textarea_field( wp_unslash( $_POST['printengine_print_text'] ) )
@@ -260,7 +261,6 @@ class CustomizerField {
 			if ( mb_strlen( $text ) > self::TEXT_MAX_LENGTH ) {
 				wc_add_notice(
 					sprintf(
-						/* translators: %d = max character count */
 						__( 'Custom text is too long (max %d characters).', 'printengine-woocommerce-addon' ),
 						self::TEXT_MAX_LENGTH
 					),
@@ -272,31 +272,77 @@ class CustomizerField {
 			return $passed;
 		}
 
-		// Image mode validation.
+		//
+		// IMAGE MODE
+		//
 		$source = isset( $_POST['printengine_image_source'] )
 			? sanitize_text_field( wp_unslash( $_POST['printengine_image_source'] ) )
 			: '';
 
 		$allowed_sources = [ 'upload', 'library' ];
- 		if ( ! in_array( $source, $allowed_sources, true ) ) {
- 			wc_add_notice(
- 				__( 'Choose an image source before adding to cart.', 'printengine-woocommerce-addon' ),
- 				'error'
- 			);
- 			return false;
- 		}
+		if ( ! in_array( $source, $allowed_sources, true ) ) {
+			wc_add_notice(
+				__( 'Choose an image source before adding to cart.', 'printengine-woocommerce-addon' ),
+				'error'
+			);
+			return false;
+		}
 
-		// Uploaded file — server-side type and SVG content check.
+		//
+		// UPLOAD MODE
+		//
 		if ( $source === 'upload' ) {
-			if ( empty( $_FILES['printengine_upload']['tmp_name'] ) ) {
+
+			// Server-side file size validation + PHP upload error handling
+			if ( ! isset( $_FILES['printengine_upload'] ) ) {
 				wc_add_notice(
-					__( 'Choose an image before adding to cart.', 'printengine-woocommerce-addon' ),
+					__( 'Image upload failed. Try again.', 'printengine-woocommerce-addon' ),
 					'error'
 				);
 				return false;
 			}
 
-			$mime    = mime_content_type( $_FILES['printengine_upload']['tmp_name'] );
+			$file = $_FILES['printengine_upload'];
+
+			// PHP-level upload errors (e.g. upload_max_filesize/post_max_size exceeded)
+			if ( ! empty( $file['error'] ) && $file['error'] !== UPLOAD_ERR_OK ) {
+
+				if ( in_array( $file['error'], [ UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE ], true ) ) {
+					wc_add_notice(
+						__( 'File is too large (max 10 MB).', 'printengine-woocommerce-addon' ),
+						'error'
+					);
+					return false;
+				}
+
+				wc_add_notice(
+					__( 'Image upload failed due to a server error.', 'printengine-woocommerce-addon' ),
+					'error'
+				);
+				return false;
+			}
+
+			// Custom server-side 10 MB limit
+			$max_size = 10 * 1024 * 1024;
+			if ( (int) $file['size'] > $max_size ) {
+				wc_add_notice(
+					__( 'File is too large (max 10 MB).', 'printengine-woocommerce-addon' ),
+					'error'
+				);
+				return false;
+			}
+
+			// post_max_size exceeded -> tmp_name missing
+			if ( empty( $file['tmp_name'] ) ) {
+				wc_add_notice(
+					__( 'Image upload failed. Try again.', 'printengine-woocommerce-addon' ),
+					'error'
+				);
+				return false;
+			}
+
+			// Server-side MIME type validation
+			$mime    = mime_content_type( $file['tmp_name'] );
 			$allowed = [ 'image/jpeg', 'image/png', 'image/svg+xml' ];
 
 			if ( ! in_array( $mime, $allowed, true ) ) {
@@ -307,9 +353,9 @@ class CustomizerField {
 				return false;
 			}
 
-			// SVG-specific: reject files containing inline scripts or event handlers.
+			// SVG-specific security checks: reject inline scripts or event handlers
 			if ( $mime === 'image/svg+xml' ) {
-				$svg = file_get_contents( $_FILES['printengine_upload']['tmp_name'] );
+				$svg = file_get_contents( $file['tmp_name'] );
 				if ( $svg === false
 					|| preg_match( '/<script/i', $svg )
 					|| preg_match( '/\bon\w+\s*=/i', $svg )
@@ -324,7 +370,9 @@ class CustomizerField {
 			}
 		}
 
-		// Library selection.
+		//
+		// LIBRARY MODE
+		//
 		if ( $source === 'library' ) {
 			$attachment_id = absint( $_POST['printengine_library_attachment_id'] ?? 0 );
 
@@ -339,6 +387,7 @@ class CustomizerField {
 
 		return $passed;
 	}
+
 
 	// -----------------------------------------------------------------------
 	// Cart
