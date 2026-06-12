@@ -79,10 +79,10 @@ class CustomizerField {
 			[
 				'maxFileSize'   => 10 * 1024 * 1024,
 				'maxTextLength' => self::TEXT_MAX_LENGTH,
-				'allowedTypes'  => [ 'image/jpeg', 'image/png', 'image/svg+xml' ],
+				'allowedTypes'  => [ 'image/jpeg', 'image/png' ],
 				'i18n' => [
 					'fileTooLarge'  => __( 'File is too large (max 10 Mt).', 'printengine-woocommerce-addon' ),
-					'invalidType'   => __( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ),
+					'invalidType'   => __( 'Allowed file types: JPG, PNG.', 'printengine-woocommerce-addon' ),
 					'textTooLong'   => __( 'Text is too long (max 20 characters).', 'printengine-woocommerce-addon' ),
 					'requiredText'  => __( 'Write custom text.', 'printengine-woocommerce-addon' ),
 					'requiredImage' => __( 'Choose or upload custom image.', 'printengine-woocommerce-addon' ),
@@ -180,12 +180,12 @@ class CustomizerField {
 			<!-- Upload panel -->
 			<div class="printengine-panel" id="printengine-panel-upload" hidden>
 				<label for="printengine_upload">
-					<?php esc_html_e( 'Upload image (JPG, PNG tai SVG, max 10 Mt)', 'printengine-woocommerce-addon' ); ?>
+					<?php esc_html_e( 'Upload image (JPG or PNG, max 10 Mt)', 'printengine-woocommerce-addon' ); ?>
 				</label>
 				<input type="file"
 					id="printengine_upload"
 					name="printengine_upload"
-					accept="image/jpeg,image/png,image/svg+xml" />
+					accept="image/jpeg,image/png" />
 				<div id="printengine-upload-preview" class="printengine-preview" hidden></div>
 				<p class="printengine-error" id="printengine-upload-error" hidden></p>
 			</div>
@@ -343,31 +343,16 @@ class CustomizerField {
 
 			// Server-side MIME type validation
 			$mime    = mime_content_type( $file['tmp_name'] );
-			$allowed = [ 'image/jpeg', 'image/png', 'image/svg+xml' ];
+			$allowed = [ 'image/jpeg', 'image/png' ];
 
 			if ( ! in_array( $mime, $allowed, true ) ) {
 				wc_add_notice(
-					__( 'Allowed file types: JPG, PNG, SVG.', 'printengine-woocommerce-addon' ),
+					__( 'Allowed file types: JPG, PNG.', 'printengine-woocommerce-addon' ),
 					'error'
 				);
 				return false;
 			}
 
-			// SVG-specific security checks: reject inline scripts or event handlers
-			if ( $mime === 'image/svg+xml' ) {
-				$svg = file_get_contents( $file['tmp_name'] );
-				if ( $svg === false
-					|| preg_match( '/<script/i', $svg )
-					|| preg_match( '/\bon\w+\s*=/i', $svg )
-					|| preg_match( '/javascript\s*:/i', $svg )
-				) {
-					wc_add_notice(
-						__( 'SVG files must not contain inline scripts or event handlers.', 'printengine-woocommerce-addon' ),
-						'error'
-					);
-					return false;
-				}
-			}
 		}
 
 		//
