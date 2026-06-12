@@ -165,6 +165,19 @@ class CustomizerField {
 				<?php endif; ?>
 			</div>
 
+			<!-- Print side -->
+			<div class="printengine-panel" id="printengine-panel-side">
+				<label for="printengine_print_side">
+					<?php esc_html_e( 'Print side', 'printengine-woocommerce-addon' ); ?>
+				</label>
+
+				<select id="printengine_print_side" name="printengine_print_side">
+					<option value="front"><?php esc_html_e( 'Front', 'printengine-woocommerce-addon' ); ?></option>
+					<option value="back"><?php esc_html_e( 'Back', 'printengine-woocommerce-addon' ); ?></option>
+				</select>
+			</div>
+
+
 			<!-- Text panel -->
 			<div class="printengine-panel" id="printengine-panel-text">
 				<label for="printengine_print_text">
@@ -253,6 +266,19 @@ class CustomizerField {
 		$mode = isset( $_POST['printengine_print_mode'] )
 			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
 			: 'text';
+
+		// Validate print side
+		$side = isset( $_POST['printengine_print_side'] )
+			? sanitize_key( wp_unslash( $_POST['printengine_print_side'] ) )
+			: '';
+
+		if ( ! in_array( $side, [ 'front', 'back' ], true ) ) {
+			wc_add_notice(
+				__( 'Choose print side (front or back).', 'printengine-woocommerce-addon' ),
+				'error'
+			);
+			return false;
+		}
 
 		//
 		// TEXT MODE
@@ -392,6 +418,14 @@ class CustomizerField {
 
 	public static function save_to_cart( $cart_item_data, $product_id ) {
 
+		// Save print side
+		$side = isset( $_POST['printengine_print_side'] )
+			? sanitize_key( wp_unslash( $_POST['printengine_print_side'] ) )
+			: 'front';
+
+		$cart_item_data['printengine_print_side'] = $side;
+
+
 		// Determine mode
 		$mode = isset( $_POST['printengine_print_mode'] )
 			? sanitize_key( wp_unslash( $_POST['printengine_print_mode'] ) )
@@ -496,6 +530,16 @@ class CustomizerField {
 	public static function display_in_cart( array $item_data, array $cart_item ): array {
 		$mode = $cart_item['printengine_print_mode'] ?? '';
 
+		if ( ! empty( $cart_item['printengine_print_side'] ) ) {
+			$item_data[] = [
+				'key'   => __( 'Print side', 'printengine-woocommerce-addon' ),
+				'value' => $cart_item['printengine_print_side'] === 'front'
+					? __( 'Front', 'printengine-woocommerce-addon' )
+					: __( 'Back', 'printengine-woocommerce-addon' ),
+			];
+		}
+
+
 		if ( $mode === 'text' && ! empty( $cart_item['printengine_print_text'] ) ) {
 			$item_data[] = [
 				'key'   => __( 'Custom text', 'printengine-woocommerce-addon' ),
@@ -530,6 +574,17 @@ class CustomizerField {
 	): void {
 		$mode = $values['printengine_print_mode'] ?? '';
 		$item->add_meta_data( '_printengine_print_mode', sanitize_key( $mode ), true );
+
+		if ( ! empty( $values['printengine_print_side'] ) ) {
+			$side = sanitize_key( $values['printengine_print_side'] );
+			$item->add_meta_data( '_printengine_print_side', $side, true );
+			$item->add_meta_data(
+				__( 'Print side', 'printengine-woocommerce-addon' ),
+				$side === 'front' ? __( 'Front', 'printengine-woocommerce-addon' ) : __( 'Back', 'printengine-woocommerce-addon' ),
+				true
+			);
+		}
+
 
 		if ( $mode === 'text' && ! empty( $values['printengine_print_text'] ) ) {
 			$text = sanitize_textarea_field( $values['printengine_print_text'] );
@@ -572,6 +627,15 @@ class CustomizerField {
 	// -----------------------------------------------------------------------
 
 	public static function display_in_admin_order( int $item_id, \WC_Order_Item $item, $product ): void {
+		$side = $item->get_meta( '_printengine_print_side' );
+		
+		if ( $side ) {
+			echo '<div class="printengine-admin-image" style="margin-top:8px;">';
+			echo '<strong>' . esc_html__( 'Print side', 'printengine-woocommerce-addon' ) . '</strong><br />';
+			echo esc_html( $side === 'front' ? __( 'Front', 'printengine-woocommerce-addon' ) : __( 'Back', 'printengine-woocommerce-addon' ) );
+			echo '</div>';
+		}
+	
 		$mode = $item->get_meta( '_printengine_print_mode' );
 
 		if ( $mode === 'text' ) {
